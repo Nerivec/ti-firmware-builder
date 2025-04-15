@@ -247,4 +247,4 @@ jobs:
       - name: Upload artifacts
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.hex
+          files: artifacts/**/*.hex
