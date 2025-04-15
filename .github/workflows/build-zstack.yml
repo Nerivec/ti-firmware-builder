@@ -1,0 +1,250 @@
+name: Build firmwares
+
+on:
+  workflow_dispatch:
+    inputs:
+      help:
+        type: boolean
+        description: 'Display help for various commands'
+        required: false
+  release:
+    types:
+      - published
+
+env:
+  REGISTRY: ghcr.io
+  CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /build
+  CCS_INIT: -application com.ti.ccstudio.apps.initialize
+  CCS_INSPECT: -application com.ti.ccstudio.apps.inspect
+  CCS_CREATE: -application com.ti.ccstudio.apps.createProject
+  CCS_IMPORT: -application com.ti.ccstudio.apps.importProject
+  CCS_MODIFY: -application com.ti.ccstudio.apps.modifyProject
+  CCS_BUILD: -application com.ti.ccstudio.apps.buildProject
+  SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
+  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.2.LTS -ccs.outputFormat ELF
+
+jobs:
+  build-container:
+    name: Create build container image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the GitHub container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read repository information
+        id: read-repo-info
+        run: |
+          if [[ $GITHUB_EVENT_NAME == "pull_request" ]]; then
+            base_image=$(echo ${{ github.event.pull_request.base.repo.full_name }} | awk '{print tolower($0)}')
+            head_image=$(echo ${{ github.event.pull_request.head.repo.full_name }} | awk '{print tolower($0)}')
+          else
+            base_image=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
+            head_image=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
+          fi
+
+          tag_name=$(echo "${{ hashFiles('Dockerfile') }}" | cut -c-16)
+
+          # Default to building a new container under the original repo
+          image_name=$head_image
+          build_image=true
+
+          # Check if we can use the base image (Nerivec)
+          if docker manifest inspect ${{ env.REGISTRY }}/$base_image:$tag_name; then
+            image_name=$base_image
+            build_image=false
+          fi
+
+          # Check if we can use the head image (if this is a PR)
+          if [[ $base_image != $head_image ]]; then
+            if docker manifest inspect ${{ env.REGISTRY }}/$head_image:$tag_name; then
+              image_name=$head_image
+              build_image=false
+            fi
+          fi
+
+          if [[ $build_image == "true" && $GITHUB_EVENT_NAME == "pull_request" ]]; then
+            echo "Cannot build a new container within a PR. Please re-run this action after $head_image:$tag_name is built."
+            exit 1
+          fi
+
+          echo "build_image=$build_image" >> $GITHUB_OUTPUT
+          echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
+          echo "image_name=$image_name" >> $GITHUB_OUTPUT
+          echo "container_name=${{ env.REGISTRY }}/$image_name:$tag_name" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        if: steps.read-repo-info.outputs.build_image == 'true'
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        if: steps.read-repo-info.outputs.build_image == 'true'
+        with:
+          context: .
+          file: Dockerfile
+          tags: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:${{ steps.read-repo-info.outputs.tag_name }}
+          cache-from: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
+          cache-to: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
+          push: true
+
+    outputs:
+      tag_name: ${{ steps.read-repo-info.outputs.tag_name }}
+      image_name: ${{ steps.read-repo-info.outputs.image_name }}
+      container_name: ${{ steps.read-repo-info.outputs.container_name }}
+
+  build-firmwares:
+    name: Firmware builder
+    needs: [build-container]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.build-container.outputs.container_name }}
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fix `fatal: detected dubious ownership in repository at`
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # Example output:
+      # - /opt/css
+      # - /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
+      # - /opt/sysconfig_1.21.1
+      # - /opt/ti-cgt-armllvm_4.0.2.LTS
+      # - /opt/xdctools_3_62_01_15_core
+      # - /opt/xdctools_3_62_01_16_core
+      - run: tree -d /opt
+        if: ${{ inputs.help }}
+
+      # Note: CCS12 uses `-data`, CCS20 uses `-workspace`
+
+      - name: CCStudio discover tools & products
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_INIT }} -ccs.toolDiscoveryPath /opt -ccs.productDiscoveryPath /opt
+
+      - name: CCStudio currently detected/supported
+        if: ${{ inputs.help }}
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_INSPECT }} -ccs.product -ccs.devices
+
+      - name: Help for createProject
+        if: ${{ inputs.help }}
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.help
+
+      - name: Help for importProject
+        if: ${{ inputs.help }}
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_IMPORT }} -ccs.help
+
+      - name: Help for modifyProject
+        if: ${{ inputs.help }}
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.help
+
+      - name: Help for buildProject
+        if: ${{ inputs.help }}
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_BUILD }} -ccs.help
+
+      # "other" first because of the rename required
+      - name: Import & Copy "other" znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang into workspace
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_IMPORT }} -ccs.copyIntoWorkspace true -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.renameTo znp_CC1352P_2_other_tirtos7_ticlang
+
+      - name: Import & Copy "other" zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang into workspace
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_IMPORT }} -ccs.copyIntoWorkspace true -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.renameTo zr_genericapp_CC1352P_2_other_tirtos7_ticlang
+
+      - name: Import & Copy projects into workspace
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_IMPORT }} -ccs.copyIntoWorkspace true -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC26X2R1_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC1352P7_4/zstack/znp/tirtos7/ticlang/znp_LP_CC1352P7_4_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652R7/zstack/znp/tirtos7/ticlang/znp_LP_CC2652R7_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RB/zstack/znp/tirtos7/ticlang/znp_LP_CC2652RB_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC26X2R1_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC1352P7_4/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652R7/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC2652R7_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RB/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC2652RB_tirtos7_ticlang.projectspec
+
+      # Other zstack projects:
+      # - ${{ env.SDK_PATH }}/examples/rtos/CC1352P_4_LAUNCHXL
+      # - ${{ env.SDK_PATH }}/examples/rtos/CC1352R1_LAUNCHXL
+      # - ${{ env.SDK_PATH }}/examples/rtos/LP_CC2651P3
+      # - ${{ env.SDK_PATH }}/examples/rtos/LP_CC2651R3SIPA
+      # - ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652PSIP
+      # - ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RSIP
+      # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_1
+      # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_6
+      # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC2674P10
+
+      - name: Modify project znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project znp_CC1352P_2_other_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_CC1352P_2_other_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project znp_LP_CC1352P7_4_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_LP_CC1352P7_4_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project znp_LP_CC2652R7_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_LP_CC2652R7_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project znp_LP_CC2652RB_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_LP_CC2652RB_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project zr_genericapp_CC1352P_2_other_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_CC1352P_2_other_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project zr_genericapp_LP_CC2652R7_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_LP_CC2652R7_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Modify project zr_genericapp_LP_CC2652RB_tirtos7_ticlang
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_LP_CC2652RB_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+
+      - name: Build workspace projects
+        run: ${{ env.CCS_CMD }} ${{ env.CCS_BUILD }} -ccs.workspace -ccs.buildType full -ccs.listErrors
+
+      - uses: actions/upload-artifact@v4
+        with:
+            name: build_dir
+            # any `zstack` & the workspace log file
+            path: |
+              /build/gpd_*
+              /build/zc_*
+              /build/zed_*
+              /build/znp_*
+              /build/zr_*
+              /build/.metadata/.log
+            include-hidden-files: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+            name: firmware_builds
+            path: /build/**/*.hex
+
+  release-assets:
+    name: Upload release assets
+    needs: [build-firmwares]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download firmware builds artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware_builds
+          path: artifacts
+
+      - name: Upload artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.hex

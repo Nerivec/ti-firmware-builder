@@ -1,0 +1,16 @@
+# MacOS indexing files
+.DS_Store
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDE specific folders
+.idea
+.*.swp
