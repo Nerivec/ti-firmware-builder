@@ -174,7 +174,7 @@ jobs:
           sed -i -e "s+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, '0','0','0','0','0','0','0','0' }+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, $now_arr }+g" $PWD/sdk/source/preinclude.h
 
           echo "Copying new source"
-          cp -rf $PWD/sdk/source/* ${{ env.SDK_PATH }}/source/
+          cp -rf $PWD/sdk/* ${{ env.SDK_PATH }}/
 
           echo "Patching SDK"
           patch -p1 -d ${{ env.SDK_PATH }} -i $PWD/patches/sdk.patch
