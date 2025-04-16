@@ -3,16 +3,26 @@
 
 function iterObj(obj, curKey) {
     for (const key in obj) {
-        if (Object.hasOwn(obj, key) && !key.startsWith('$') && typeof obj[key] !== 'function') {
-            if (typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-                iterObj(obj[key], `${curKey}.${key}`);
+        const val = obj[key];
+
+        if (Object.hasOwn(obj, key) && !key.startsWith('$') && typeof val !== 'function') {
+            const isArray = Array.isArray(val);
+
+            if (typeof val === 'object' && !isArray) {
+                iterObj(val, `${curKey}.${key}`);
             } else {
-                console.log(`${curKey}.${key}`, obj[key]);
+                const keyType = typeof val;
+                const eLeft = keyType === 'string' ? '"' : isArray ? '[' : '';
+                const eRight = keyType === 'string' ? '"' : isArray ? ']' : '';
+                const jsVal = isArray ? val.map((v) => typeof v === 'string' ? `"${v}"` : v) : val;
+
+                console.log(`${curKey}.${key} = ${eLeft}${jsVal}${eRight}; // type: ${isArray ? val.length > 0 ? `${typeof val[0]}[]`: 'unknown[]' : keyType}`);
             }
         }
     }
 }
 
+console.group(argv[0]);
 iterObj(AESCBC, 'AESCBC');
 iterObj(AESCCM, 'AESCCM');
 iterObj(AESECB, 'AESECB');
@@ -44,3 +54,4 @@ iterObj(NVS2, 'NVS2');
 iterObj(SHA21, 'SHA21');
 iterObj(TRNG1, 'TRNG1');
 iterObj(Display_UART, 'Display_UART');
+console.groupEnd();
