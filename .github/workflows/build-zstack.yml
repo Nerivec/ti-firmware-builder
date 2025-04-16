@@ -1,4 +1,4 @@
-name: Build firmwares
+name: Build zstack firmware
 
 on:
   workflow_dispatch:
@@ -16,7 +16,6 @@ on:
       - published
 
 env:
-  REGISTRY: ghcr.io
   CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/workspace
   CCS_INIT: -application com.ti.ccstudio.apps.initialize
   CCS_INSPECT: -application com.ti.ccstudio.apps.inspect
@@ -33,92 +32,23 @@ env:
   I_PREINCLUDE: -include /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h
 
 jobs:
-  build-container:
-    name: Create build container image
-    runs-on: ubuntu-latest
+  build_container:
+    name: Call
+    uses: ./.github/workflows/build-container.yml
     permissions:
       contents: read
       packages: write
-    steps:
-      - uses: actions/checkout@v4
+    secrets: inherit
 
-      - name: Log in to the GitHub container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Read repository information
-        id: read-repo-info
-        run: |
-          if [[ $GITHUB_EVENT_NAME == "pull_request" ]]; then
-            base_image=$(echo ${{ github.event.pull_request.base.repo.full_name }} | awk '{print tolower($0)}')
-            head_image=$(echo ${{ github.event.pull_request.head.repo.full_name }} | awk '{print tolower($0)}')
-          else
-            base_image=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
-            head_image=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
-          fi
-
-          tag_name=$(echo "${{ hashFiles('Dockerfile') }}" | cut -c-16)
-
-          # Default to building a new container under the original repo
-          image_name=$head_image
-          build_image=true
-
-          # Check if we can use the base image (Nerivec)
-          if docker manifest inspect ${{ env.REGISTRY }}/$base_image:$tag_name; then
-            image_name=$base_image
-            build_image=false
-          fi
-
-          # Check if we can use the head image (if this is a PR)
-          if [[ $base_image != $head_image ]]; then
-            if docker manifest inspect ${{ env.REGISTRY }}/$head_image:$tag_name; then
-              image_name=$head_image
-              build_image=false
-            fi
-          fi
-
-          if [[ $build_image == "true" && $GITHUB_EVENT_NAME == "pull_request" ]]; then
-            echo "Cannot build a new container within a PR. Please re-run this action after $head_image:$tag_name is built."
-            exit 1
-          fi
-
-          echo "build_image=$build_image" >> $GITHUB_OUTPUT
-          echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
-          echo "image_name=$image_name" >> $GITHUB_OUTPUT
-          echo "container_name=${{ env.REGISTRY }}/$image_name:$tag_name" >> $GITHUB_OUTPUT
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        if: steps.read-repo-info.outputs.build_image == 'true'
-
-      - name: Build and Push
-        uses: docker/build-push-action@v6
-        if: steps.read-repo-info.outputs.build_image == 'true'
-        with:
-          context: .
-          file: Dockerfile
-          tags: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:${{ steps.read-repo-info.outputs.tag_name }}
-          cache-from: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
-          cache-to: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
-          push: true
-
-    outputs:
-      tag_name: ${{ steps.read-repo-info.outputs.tag_name }}
-      image_name: ${{ steps.read-repo-info.outputs.image_name }}
-      container_name: ${{ steps.read-repo-info.outputs.container_name }}
-
-  build-firmwares:
-    name: Firmware builder
-    needs: [build-container]
+  build_firmwares:
+    name: Build zstack firmware
+    needs: [build_container]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
     container:
-      image: ${{ needs.build-container.outputs.container_name }}
+      image: ${{ needs.build_container.outputs.container_name }}
       options: --user root
     steps:
       - uses: actions/checkout@v4
@@ -337,7 +267,7 @@ jobs:
 
   release-assets:
     name: Upload release assets
-    needs: [build-firmwares]
+    needs: [build_firmwares]
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
