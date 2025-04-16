@@ -1,0 +1,927 @@
+diff --git a/source/ti/zstack/apps/genericapp/zcl_genericapp.c b/source/ti/zstack/apps/genericapp/zcl_genericapp.c
+index b6d89494b..42eee6d42 100644
+--- a/source/ti/zstack/apps/genericapp/zcl_genericapp.c
++++ b/source/ti/zstack/apps/genericapp/zcl_genericapp.c
+@@ -53,6 +53,9 @@
+  * INCLUDES
+  */
+ 
++#include <driverlib/sys_ctrl.h>
++#include "osal_nv.h"
++
+ #include "rom_jt_154.h"
+ #include "zcomdef.h"
+ 
+@@ -261,6 +264,16 @@ void sampleApp_task(NVINTF_nvFuncts_t *pfnNV)
+   pfnZdlNV = pfnNV;
+   zclport_registerNV(pfnZdlNV, ZCL_PORT_SCENE_TABLE_NV_ID);
+ 
++#ifdef IS_ROUTER
++  // Init the transmit power NV item, this will be skipped if item is already initialized
++  int8_t transmitPower = TXPOWER;
++  osal_nv_item_init( ZCD_NV_TRANSMIT_POWER, sizeof(transmitPower), &transmitPower );
++
++  // Set transmit power
++  osal_nv_read( ZCD_NV_TRANSMIT_POWER, 0, sizeof( transmitPower ), &transmitPower );
++  ZMacSetTransmitPower( (ZMacTransmitPower_t)transmitPower );
++#endif
++
+   // Initialize application
+   zclGenericApp_initialization();
+ 
+@@ -870,6 +883,9 @@ static void zclGenericApp_processAfIncomingMsgInd(zstack_afIncomingMsgInd_t *pIn
+  */
+ static void zclGenericApp_ProcessCommissioningStatus(bdbCommissioningModeMsg_t *bdbCommissioningModeMsg)
+ {
++#ifdef IS_ROUTER
++  zstack_bdbStartCommissioningReq_t zstack_bdbStartCommissioningReq;
++#endif
+   switch(bdbCommissioningModeMsg->bdbCommissioningMode)
+   {
+     case BDB_COMMISSIONING_FORMATION:
+@@ -909,6 +925,10 @@ static void zclGenericApp_ProcessCommissioningStatus(bdbCommissioningModeMsg_t *
+       }
+     break;
+     case BDB_COMMISSIONING_INITIALIZATION:
++#ifdef IS_ROUTER
++      zstack_bdbStartCommissioningReq.commissioning_mode = BDB_COMMISSIONING_MODE_NWK_STEERING | BDB_COMMISSIONING_MODE_FINDING_BINDING;
++      Zstackapi_bdbStartCommissioningReq(appServiceTaskId,&zstack_bdbStartCommissioningReq);
++#endif
+       //Initialization notification can only be successful. Failure on initialization
+       //only happens for ZED and is notified as BDB_COMMISSIONING_PARENT_LOST notification
+ 
+@@ -1209,6 +1229,17 @@ static void zclGenericApp_changeKeyCallback(Button_Handle _btn, Button_EventMask
+  */
+ static void zclGenericApp_processKey(Button_Handle _btn)
+ {
++#ifdef IS_ROUTER
++    NLME_LeaveReq_t         req;
++    memset( &req, 0, sizeof( NLME_LeaveReq_t ) );
++    NLME_LeaveReq(&req);
++    // Sleep for 2 seconds, otherwise leave request is not send
++    Task_sleep(2000 * (1000 / ClockP_getSystemTickPeriod()));
++
++    zgWriteStartupOptions( ZG_STARTUP_SET, ZCD_STARTOPT_DEFAULT_NETWORK_STATE | ZCD_STARTOPT_DEFAULT_CONFIG_STATE);
++      
++    SysCtrlSystemReset();
++#else
+     zstack_bdbStartCommissioningReq_t zstack_bdbStartCommissioningReq;
+     //Button 1
+     if(_btn == gLeftButtonHandle)
+@@ -1230,6 +1261,7 @@ static void zclGenericApp_processKey(Button_Handle _btn)
+     {
+         Zstackapi_bdbResetLocalActionReq(appServiceTaskId);
+     }
++#endif
+ 
+ }
+ 
+diff --git a/source/ti/zstack/apps/genericapp/zcl_genericapp_data.c b/source/ti/zstack/apps/genericapp/zcl_genericapp_data.c
+index 2738ea9a7..f50d91b59 100644
+--- a/source/ti/zstack/apps/genericapp/zcl_genericapp_data.c
++++ b/source/ti/zstack/apps/genericapp/zcl_genericapp_data.c
+@@ -49,6 +49,8 @@
+ #include "zcl_general.h"
+ #include "zcl_ha.h"
+ 
++#include "osal_nv.h"
++
+ /* GENERICAPP_TODO: Include any of the header files below to access specific cluster data
+ #include "zcl_poll_control.h"
+ #include "zcl_electrical_measurement.h"
+@@ -96,6 +98,11 @@ const uint16_t zclGenericApp_identify_clusterRevision = 0x0001;
+ const uint8_t zclGenericApp_HWRevision = GENERICAPP_HWVERSION;
+ const uint8_t zclGenericApp_ZCLVersion = GENERICAPP_ZCLVERSION;
+ const uint8_t zclGenericApp_ManufacturerName[] = { 16, 'T','e','x','a','s','I','n','s','t','r','u','m','e','n','t','s' };
++#ifdef IS_ROUTER
++const uint8_t zclGenericApp_ModelID[] = { 9, 't','i','.','r','o','u','t','e','r' };
++const uint8_t zclGenericApp_SwBuildID[] = ZCL_GENERIC_APP_SW_BUILD_ID;
++int8_t zclGenericApp_TransmitPower;
++#endif
+ const uint8_t zclGenericApp_PowerSource = POWER_SOURCE_MAINS_1_PHASE;
+ uint8_t zclGenericApp_PhysicalEnvironment = PHY_UNSPECIFIED_ENV;
+ 
+@@ -134,7 +141,7 @@ CONST zclAttrRec_t zclGenericApp_Attrs[] =
+     {  // Attribute record
+       ATTRID_BASIC_HW_VERSION,            // Attribute ID - Found in Cluster Library header (ie. zcl_general.h)
+       ZCL_DATATYPE_UINT8,                 // Data Type - found in zcl.h
+-      ACCESS_CONTROL_READ,                // Variable access control - found in zcl.h
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_AUTH_READ),  // Variable access control - found in zcl.h
+       (void *)&zclGenericApp_HWRevision  // Pointer to attribute variable
+     }
+   },
+@@ -143,16 +150,36 @@ CONST zclAttrRec_t zclGenericApp_Attrs[] =
+     { // Attribute record
+       ATTRID_BASIC_ZCL_VERSION,
+       ZCL_DATATYPE_UINT8,
+-      ACCESS_CONTROL_READ,
++      (ACCESS_CONTROL_READ | ACCESS_REPORTABLE | ACCESS_CONTROL_AUTH_READ),
+       (void *)&zclGenericApp_ZCLVersion
+     }
+   },
++#ifdef IS_ROUTER
++  {
++    ZCL_CLUSTER_ID_GENERAL_BASIC,
++    { // Attribute record
++      ATTRID_BASIC_MODEL_IDENTIFIER,
++      ZCL_DATATYPE_CHAR_STR,
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_AUTH_READ),
++      (void *)zclGenericApp_ModelID
++    }
++  },
++  {
++    ZCL_CLUSTER_ID_GENERAL_BASIC,
++    { // Attribute record
++      ATTRID_BASIC_SW_BUILD_ID,
++      ZCL_DATATYPE_CHAR_STR,
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_AUTH_READ),
++      (void *)zclGenericApp_SwBuildID
++    }
++  },
++#endif
+   {
+     ZCL_CLUSTER_ID_GENERAL_BASIC,
+     { // Attribute record
+       ATTRID_BASIC_MANUFACTURER_NAME,
+       ZCL_DATATYPE_CHAR_STR,
+-      ACCESS_CONTROL_READ,
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_AUTH_READ),
+       (void *)zclGenericApp_ManufacturerName
+     }
+   },
+@@ -161,7 +188,7 @@ CONST zclAttrRec_t zclGenericApp_Attrs[] =
+     { // Attribute record
+       ATTRID_BASIC_POWER_SOURCE,
+       ZCL_DATATYPE_ENUM8,
+-      ACCESS_CONTROL_READ,
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_AUTH_READ),
+       (void *)&zclGenericApp_PowerSource
+     }
+   },
+@@ -170,7 +197,7 @@ CONST zclAttrRec_t zclGenericApp_Attrs[] =
+     { // Attribute record
+       ATTRID_BASIC_PHYSICAL_ENVIRONMENT,
+       ZCL_DATATYPE_ENUM8,
+-      (ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE),
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE | ACCESS_CONTROL_AUTH_READ),
+       (void *)&zclGenericApp_PhysicalEnvironment
+     }
+   },
+@@ -179,10 +206,21 @@ CONST zclAttrRec_t zclGenericApp_Attrs[] =
+     {  // Attribute record
+       ATTRID_CLUSTER_REVISION,
+       ZCL_DATATYPE_UINT16,
+-      ACCESS_CONTROL_READ,
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_AUTH_READ),
+       (void *)&zclGenericApp_basic_clusterRevision
+     }
+   },
++#ifdef IS_ROUTER
++  {
++    ZCL_CLUSTER_ID_GENERAL_BASIC,
++    {  // Attribute record
++     ATTRID_BASIC_TRANSMIT_POWER,
++     ZCL_DATATYPE_INT8,
++     (ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE | ACCESS_CONTROL_AUTH_READ),
++     (void *)&zclGenericApp_TransmitPower
++    }
++  },
++#endif
+ 
+ #ifdef ZCL_IDENTIFY
+   // *** Identify Cluster Attribute ***
+@@ -191,7 +229,7 @@ CONST zclAttrRec_t zclGenericApp_Attrs[] =
+     { // Attribute record
+       ATTRID_IDENTIFY_IDENTIFY_TIME,
+       ZCL_DATATYPE_UINT16,
+-      (ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE),
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_WRITE | ACCESS_CONTROL_AUTH_READ),
+       (void *)&zclGenericApp_IdentifyTime
+     }
+   },
+@@ -201,7 +239,7 @@ CONST zclAttrRec_t zclGenericApp_Attrs[] =
+     {  // Attribute record
+       ATTRID_CLUSTER_REVISION,
+       ZCL_DATATYPE_UINT16,
+-      ACCESS_CONTROL_READ,
++      (ACCESS_CONTROL_READ | ACCESS_CONTROL_AUTH_READ),
+       (void *)&zclGenericApp_identify_clusterRevision
+     }
+   },
+@@ -276,6 +314,9 @@ void zclGenericApp_ResetAttributesToDefaultValues(void)
+ {
+ 
+   zclGenericApp_PhysicalEnvironment = PHY_UNSPECIFIED_ENV;
++#ifdef IS_ROUTER
++  osal_nv_read( ZCD_NV_TRANSMIT_POWER, 0, sizeof( zclGenericApp_TransmitPower ), &zclGenericApp_TransmitPower );
++#endif
+ 
+ #ifdef ZCL_IDENTIFY
+   zclGenericApp_IdentifyTime = 0;
+diff --git a/source/ti/zstack/boards/cc13x2_cc26x2/cc13x2_cc26x2_tirtos7_ticlang.cmd b/source/ti/zstack/boards/cc13x2_cc26x2/cc13x2_cc26x2_tirtos7_ticlang.cmd
+index 54806e395..89a8b8291 100755
+--- a/source/ti/zstack/boards/cc13x2_cc26x2/cc13x2_cc26x2_tirtos7_ticlang.cmd
++++ b/source/ti/zstack/boards/cc13x2_cc26x2/cc13x2_cc26x2_tirtos7_ticlang.cmd
+@@ -60,7 +60,7 @@
+ /* modifications in your CCS project and leave this file alone.              */
+ /*                                                                           */
+ /* --heap_size=0                                                             */
+---stack_size=1024
++--stack_size=4096
+ /* --library=rtsv7M3_T_le_eabi.lib                                           */
+ 
+ /* The starting address of the application.  Normally the interrupt vectors  */
+@@ -71,9 +71,9 @@
+ #endif
+ 
+ #define FLASH_BASE              0x00000000
+-#define FLASH_SIZE              (0x56000 - (NVOCMP_NVPAGES * 0x2000))
+-#define FLASH_NV_BASE           (0x56000 - (NVOCMP_NVPAGES * 0x2000))
+-#define FLASH_NV_SIZE           (NVOCMP_NVPAGES * 0x2000)
++#define FLASH_SIZE              0x50000
++#define FLASH_NV_BASE           0x50000
++#define FLASH_NV_SIZE           0x6000
+ #define FLASH_LAST_BASE         0x56000
+ #define FLASH_LAST_SIZE         0x2000
+ 
+diff --git a/source/ti/zstack/boards/cc13x2x7_cc26x2x7/cc13x2x7_cc26x2x7_tirtos7_ticlang.cmd b/source/ti/zstack/boards/cc13x2x7_cc26x2x7/cc13x2x7_cc26x2x7_tirtos7_ticlang.cmd
+index 1e5777c21..ababb2c7f 100755
+--- a/source/ti/zstack/boards/cc13x2x7_cc26x2x7/cc13x2x7_cc26x2x7_tirtos7_ticlang.cmd
++++ b/source/ti/zstack/boards/cc13x2x7_cc26x2x7/cc13x2x7_cc26x2x7_tirtos7_ticlang.cmd
+@@ -60,16 +60,16 @@
+ /* modifications in your CCS project and leave this file alone.              */
+ /*                                                                           */
+ /* --heap_size=0                                                             */
+---stack_size=1024
++--stack_size=4096
+ /* --library=rtsv7M3_T_le_eabi.lib                                           */
+ 
+ /* The starting address of the application.  Normally the interrupt vectors  */
+ /* must be located at the beginning of the application.                      */
+ 
+ #define FLASH_BASE              0x00000000
+-#define FLASH_SIZE              0xAA000
+-#define FLASH_NV_BASE           0xAA000
+-#define FLASH_NV_SIZE           0x4000
++#define FLASH_SIZE              0xA6000
++#define FLASH_NV_BASE           0xA6000
++#define FLASH_NV_SIZE           0x8000
+ #define FLASH_LAST_BASE         0xAE000
+ #define FLASH_LAST_SIZE         0x2000
+ 
+diff --git a/source/ti/zstack/boards/cc13x4_cc26x4/cc13x4_cc26x4_tirtos7_ticlang.cmd b/source/ti/zstack/boards/cc13x4_cc26x4/cc13x4_cc26x4_tirtos7_ticlang.cmd
+index ff3cb97e9..983668b5a 100755
+--- a/source/ti/zstack/boards/cc13x4_cc26x4/cc13x4_cc26x4_tirtos7_ticlang.cmd
++++ b/source/ti/zstack/boards/cc13x4_cc26x4/cc13x4_cc26x4_tirtos7_ticlang.cmd
+@@ -30,7 +30,7 @@
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ 
+---stack_size=0x600   /* C stack is also used for ISR stack */
++--stack_size=4096   /* C stack is also used for ISR stack */
+ 
+ HEAPSIZE = 0x4000;  /* Size of heap buffer used by HeapMem */
+ 
+@@ -51,7 +51,7 @@ HEAPSIZE = 0x4000;  /* Size of heap buffer used by HeapMem */
+ /* modifications in your CCS project and leave this file alone.              */
+ /*                                                                           */
+ /* --heap_size=0                                                             */
+---stack_size=1024
++--stack_size=4096
+ /* --library=rtsv7M3_T_le_eabi.lib                                           */
+ 
+ #define NVOCMP_NVPAGES          5
+diff --git a/source/ti/zstack/mt/mt.h b/source/ti/zstack/mt/mt.h
+index 0435d72c6..28d9e61ff 100644
+--- a/source/ti/zstack/mt/mt.h
++++ b/source/ti/zstack/mt/mt.h
+@@ -441,6 +441,8 @@ extern "C"
+ #define MT_UTIL_CALLBACK_SUB_CMD             0x06
+ #define MT_UTIL_TIME_ALIVE                   0x09
+ 
++#define MT_UTIL_LED_CONTROL                  0x0A
++
+ #define MT_UTIL_TEST_LOOPBACK                0x10
+ #define MT_UTIL_DATA_REQ                     0x11
+ 
+@@ -467,6 +469,8 @@ extern "C"
+ #define MT_UTIL_SRNG_GENERATE                0x4C
+ #endif
+ #define MT_UTIL_BIND_ADD_ENTRY               0x4D
++#define MT_UTIL_ASSOC_REMOVE                 0x63 // Custom command
++#define MT_UTIL_ASSOC_ADD                    0x64 // Custom command
+ 
+ #define MT_UTIL_ZCL_KEY_EST_INIT_EST         0x80
+ #define MT_UTIL_ZCL_KEY_EST_SIGN             0x81
+diff --git a/source/ti/zstack/mt/mt_util.c b/source/ti/zstack/mt/mt_util.c
+index 54cecc0d6..e86338ac9 100644
+--- a/source/ti/zstack/mt/mt_util.c
++++ b/source/ti/zstack/mt/mt_util.c
+@@ -79,6 +79,9 @@
+ #include "mt_zdo.h"
+ #include "ssp.h"
+ 
++#include <ti/drivers/apps/LED.h>
++#include "ti_drivers_config.h"
++
+ #if !defined NONWK
+ 
+ #include "mt_nwk.h"
+@@ -154,6 +157,9 @@ static void MT_UtilAPSME_LinkKeyNvIdGet(uint8_t *pBuf);
+ #endif //MT_SYS_KEY_MANAGEMENT
+ static void MT_UtilAPSME_RequestKeyCmd(uint8_t *pBuf);
+ static void MT_UtilAssocCount(uint8_t *pBuf);
++static void MT_UtilLedControl(uint8_t *pBuf);
++static void MT_UtilAssocRemove(uint8_t *pBuf);
++static void MT_UtilAssocAdd(uint8_t *pBuf);
+ static void MT_UtilAssocFindDevice(uint8_t *pBuf);
+ static void MT_UtilAssocGetWithAddress(uint8_t *pBuf);
+ static void MT_UtilBindAddEntry(uint8_t *pBuf);
+@@ -286,6 +292,10 @@ uint8_t MT_UtilCommandProcessing(uint8_t *pBuf)
+     MT_UtilAssocCount(pBuf);
+     break;
+ 
++  case MT_UTIL_LED_CONTROL:
++    MT_UtilLedControl(pBuf);
++    break;
++
+   case MT_UTIL_ASSOC_FIND_DEVICE:
+     MT_UtilAssocFindDevice(pBuf);
+     break;
+@@ -298,6 +308,14 @@ uint8_t MT_UtilCommandProcessing(uint8_t *pBuf)
+     MT_UtilBindAddEntry(pBuf);
+     break;
+ 
++  case MT_UTIL_ASSOC_REMOVE:
++    MT_UtilAssocRemove(pBuf);
++    break;
++
++  case MT_UTIL_ASSOC_ADD:
++    MT_UtilAssocAdd(pBuf);
++    break;
++
+   case MT_UTIL_SYNC_REQ:
+     MT_UtilSync();
+     break;
+@@ -1401,6 +1419,95 @@ static void MT_UtilAssocCount(uint8_t *pBuf)
+   MT_BuildAndSendZToolResponse(((uint8_t)MT_RPC_CMD_SRSP | (uint8_t)MT_RPC_SYS_UTIL), cmdId, 2, pBuf);
+ }
+ 
++/***************************************************************************************************
++ * @fn      MT_UtilLedControl
++ *
++ * @brief   Proxy the LedControl() function.
++ *
++ * @param   pBuf - pointer to the received buffer
++ *
++ * @return  void
++ ***************************************************************************************************/
++static void MT_UtilLedControl(uint8_t *pBuf)
++{
++  uint8_t cmdId = pBuf[MT_RPC_POS_CMD1];
++  pBuf += MT_RPC_FRAME_HDR_SZ;
++
++  uint8_t mode =  pBuf[1];
++
++  if (gLedHandle == NULL) {
++    LED_Params ledParams;
++    LED_Params_init(&ledParams);
++    gLedHandle = LED_open(CONFIG_LED_GREEN, &ledParams);
++  }
++
++  if (mode==0) {
++    LED_setOff(gLedHandle);
++  } else if (mode == 5) {
++    gLedsDisabled = TRUE;
++    LED_setOff(gLedHandle);
++  } else {
++    LED_setOn(gLedHandle, LED_BRIGHTNESS_MAX);
++  }
++
++  uint8_t retValue = 0;
++  MT_BuildAndSendZToolResponse(((uint8_t)MT_RPC_CMD_SRSP | (uint8_t)MT_RPC_SYS_UTIL), cmdId, 1, &retValue);
++}
++
++/***************************************************************************************************
++ * @fn      MT_UtilAssocRemove
++ *
++ * @brief   Proxy the AssocRemove() function.
++ *
++ * @param   pBuf - pointer to the received buffer
++ *
++ * @return  void
++ ***************************************************************************************************/
++static void MT_UtilAssocRemove(uint8_t *pBuf)
++{
++  uint8_t cmdId;
++  uint8_t ieeeAddr[Z_EXTADDR_LEN];
++  uint8_t retValue = 0;
++
++  // parse header
++  cmdId = pBuf[MT_RPC_POS_CMD1];
++  pBuf += MT_RPC_FRAME_HDR_SZ;
++
++  /* IeeAddress */
++  OsalPort_memcpy(ieeeAddr, pBuf, Z_EXTADDR_LEN);
++
++  AssocRemove(ieeeAddr);
++
++  MT_BuildAndSendZToolResponse(((uint8_t)MT_RPC_CMD_SRSP | (uint8_t)MT_RPC_SYS_UTIL), cmdId, 1, &retValue);
++}
++
++/***************************************************************************************************
++ * @fn      MT_UtilAssocAdd
++ *
++ * @brief   Proxy the AssocAdd() function.
++ *
++ * @param   pBuf - pointer to the received buffer
++ *
++ * @return  void
++ ***************************************************************************************************/
++static void MT_UtilAssocAdd(uint8_t *pBuf)
++{
++  uint8_t cmdId;
++  uint8_t retValue = 0;
++
++  // parse header
++  cmdId = pBuf[MT_RPC_POS_CMD1];
++  pBuf += MT_RPC_FRAME_HDR_SZ;
++
++  AssocAddNew(
++    BUILD_UINT16(pBuf[Z_EXTADDR_LEN], pBuf[Z_EXTADDR_LEN + 1]),
++    pBuf,
++    pBuf[Z_EXTADDR_LEN + 2]
++  );
++
++  MT_BuildAndSendZToolResponse(((uint8_t)MT_RPC_CMD_SRSP | (uint8_t)MT_RPC_SYS_UTIL), cmdId, 1, &retValue);
++}
++
+ /***************************************************************************************************
+  * @fn      MT_UtilAssocFindDevice
+  *
+@@ -1525,6 +1632,9 @@ static void MT_UtilBindAddEntry(uint8_t *pBuf)
+  ***************************************************************************************************/
+ static void packDev_t(uint8_t *pBuf, associated_devices_t *pDev)
+ {
++  // Applied some fixes here, see https://github.com/Koenkk/zigbee2mqtt/issues/13478#issuecomment-1501085509
++  memset(pBuf, 0, sizeof(associated_devices_t));
++
+   if (NULL == pDev)
+   {
+     uint16_t rtrn = INVALID_NODE_ADDR;
+@@ -1546,9 +1656,16 @@ static void packDev_t(uint8_t *pBuf, associated_devices_t *pDev)
+     *pBuf++ = pDev->linkInfo.rxLqi;
+     *pBuf++ = pDev->linkInfo.inKeySeqNum;
+     OsalPort_bufferUint32( pBuf, pDev->linkInfo.inFrmCntr );
+-    *pBuf += 4;
++    pBuf += 4;
+     *pBuf++ = LO_UINT16(pDev->linkInfo.txFailure);
+     *pBuf++ = HI_UINT16(pDev->linkInfo.txFailure);
++    *pBuf++ = pDev->endDev.endDevCfg;
++    OsalPort_bufferUint32( pBuf, pDev->endDev.deviceTimeout);
++    pBuf += 4;
++    OsalPort_bufferUint32( pBuf, pDev->timeoutCounter);
++    pBuf += 4;
++    *pBuf++ = pDev->keepaliveRcv;
++    *pBuf++ = pDev->ctrl;
+   }
+ }
+ 
+diff --git a/source/ti/zstack/mt/mt_version.c b/source/ti/zstack/mt/mt_version.c
+index 831aeb699..f5559fc79 100644
+--- a/source/ti/zstack/mt/mt_version.c
++++ b/source/ti/zstack/mt/mt_version.c
+@@ -74,10 +74,14 @@
+  *****************************************************************************/
+ const uint8_t MTVersionString[] = {
+                                    2,  /* Transport protocol revision */
+-                                   0,  /* Product ID */
++                                   1,  /* Product ID */
+                                    2,  /* Software major release number */
+                                    7,  /* Software minor release number */
+                                    1,  /* Software maintenance release number */
++                                   ((CODE_REVISION_NUMBER >> 0)  & 0xFF),
++                                   ((CODE_REVISION_NUMBER >> 8)  & 0xFF),
++                                   ((CODE_REVISION_NUMBER >> 16) & 0xFF),
++                                   ((CODE_REVISION_NUMBER >> 24) & 0xFF),
+                                  };
+ 
+ /******************************************************************************
+diff --git a/source/ti/zstack/mt/mt_zdo.c b/source/ti/zstack/mt/mt_zdo.c
+index f43df5cbf..f0bc7faaa 100644
+--- a/source/ti/zstack/mt/mt_zdo.c
++++ b/source/ti/zstack/mt/mt_zdo.c
+@@ -1684,6 +1684,11 @@ static void MT_ZdoMgmtPermitJoinRequest(uint8_t *pBuf)
+   ignoreIndication = TRUE;
+   retValue = (uint8_t)ZDP_MgmtPermitJoinReq( &destAddr, duration, tcSignificance, 0);
+   ignoreIndication = FALSE;
++  
++  // If joining is enabled via a router, ZDO_ProcessMgmtPermitJoinReq is never triggered thus
++  // ZDSecMgrPermitJoining is never called. Joining via a router would always fail now since 
++  // ZDSecMgrPermitJoiningEnabled in zd_sec_mgr.c stays FALSE
++  ZDSecMgrPermitJoining(duration);
+ 
+   MT_BuildAndSendZToolResponse(((uint8_t)MT_RPC_CMD_SRSP | (uint8_t)MT_RPC_SYS_ZDO), cmdId, 1, &retValue);
+ }
+diff --git a/source/ti/zstack/npi/npi_tl_uart.c b/source/ti/zstack/npi/npi_tl_uart.c
+index bfea71ca3..3c90f6757 100644
+--- a/source/ti/zstack/npi/npi_tl_uart.c
++++ b/source/ti/zstack/npi/npi_tl_uart.c
+@@ -1,5 +1,7 @@
+ /******************************************************************************
+ 
++******************************************************************************
++
+  @file  npi_tl_uart.c
+ 
+  @brief NPI Transport Layer Module for UART
+@@ -8,7 +10,7 @@
+  Target Device: cc13xx_cc26xx
+ 
+  ******************************************************************************
+- 
++
+  Copyright (c) 2015-2024, Texas Instruments Incorporated
+  All rights reserved.
+ 
+@@ -38,10 +40,6 @@
+  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-
+- ******************************************************************************
+- 
+- 
+  *****************************************************************************/
+ 
+ // ****************************************************************************
+@@ -114,6 +112,8 @@ static uint16 NPITLUART_readIsrBuf(size_t size);
+ //! \brief UART Callback invoked after UART write completion
+ static void NPITLUART_writeCallBack(UART2_Handle handle, void *ptr, size_t size, void *userArg, int_fast16_t status);
+ 
++static void NPITLUART_eventCallBack(UART2_Handle handle, uint32_t event, uint32_t data, void *userArg);
++
+ //! \brief UART Callback invoked after readsize has been read or timeout
+ static void NPITLUART_readCallBack(UART2_Handle handle, void *ptr, size_t size, void *userArg, int_fast16_t status);
+ 
+@@ -152,6 +152,8 @@ void NPITLUART_initializeTransport(uint8_t *tRxBuf, uint8_t *tTxBuf, npiCB_t npi
+ 
+     params.readCallback = NPITLUART_readCallBack;
+     params.writeCallback = NPITLUART_writeCallBack;
++    params.eventCallback = NPITLUART_eventCallBack;
++    params.eventMask |= UART2_EVENT_TX_FINISHED;
+ 
+     // Open / power on the UART.
+     uartHandle = UART2_open(CONFIG_DISPLAY_UART, &params);
+@@ -253,29 +255,34 @@ void NPITLUART_handleMrdyEvent(void)
+ //! \return     void
+ // -----------------------------------------------------------------------------
+ static void NPITLUART_writeCallBack(UART2_Handle handle, void *ptr, size_t size, void *userArg, int_fast16_t status)
++{}
++static void NPITLUART_eventCallBack(UART2_Handle handle, uint32_t event, uint32_t data, void *userArg)
+ {
+-    uint32_t key;
+-    key = OsalPort_enterCS();
+-
+-#if (NPI_FLOW_CTRL == 1)
+-    if ( !RxActive )
++    if (event == UART2_EVENT_TX_FINISHED)
+     {
+-        UART2_readCancel(uartHandle);
++        uint32_t key;
++        key = OsalPort_enterCS();
++
++    #if (NPI_FLOW_CTRL == 1)
++        if ( !RxActive )
++        {
++            UART2_readCancel(uartHandle);
++            if ( npiTransmitCB )
++            {
++                npiTransmitCB(TransportRxLen,TransportTxLen);
++            }
++        }
++
++        TxActive = FALSE;
++    #else
+         if ( npiTransmitCB )
+         {
+-            npiTransmitCB(TransportRxLen,TransportTxLen);
++            npiTransmitCB(0,TransportTxLen);
+         }
+-    }
++    #endif // NPI_FLOW_CTRL = 1
+ 
+-    TxActive = FALSE;
+-#else
+-    if ( npiTransmitCB )
+-    {
+-        npiTransmitCB(0,TransportTxLen);
++        OsalPort_leaveCS(key);
+     }
+-#endif // NPI_FLOW_CTRL = 1
+-
+-    OsalPort_leaveCS(key);
+ }
+ 
+ // -----------------------------------------------------------------------------
+diff --git a/source/ti/zstack/npi/npi_tl_uart.h b/source/ti/zstack/npi/npi_tl_uart.h
+index 499f96c81..576e4b4c8 100644
+--- a/source/ti/zstack/npi/npi_tl_uart.h
++++ b/source/ti/zstack/npi/npi_tl_uart.h
+@@ -72,7 +72,7 @@ extern "C"
+ #endif // !NPI_UART_BR
+ 
+ // UART ISR Buffer define
+-#define UART_ISR_BUF_SIZE 32
++#define UART_ISR_BUF_SIZE 128
+ #define UART_ISR_BUF_CNT 2
+ 
+ // ****************************************************************************
+diff --git a/source/ti/zstack/stack/af/af.c b/source/ti/zstack/stack/af/af.c
+index d1de1d45c..1ae7b9a15 100644
+--- a/source/ti/zstack/stack/af/af.c
++++ b/source/ti/zstack/stack/af/af.c
+@@ -433,10 +433,22 @@ void afIncomingData( aps_FrameFormat_t *aff, zAddrType_t *SrcAddress, uint16_t S
+ #if !defined ( APS_NO_GROUPS )
+     // Find the first endpoint for this group
+     grpEp = aps_FindGroupForEndpoint( aff->GroupID, APS_GROUPS_FIND_FIRST );
+-    if ( grpEp == APS_GROUPS_EP_NOT_FOUND )
+-      return;   // No endpoint found
++    if ( grpEp == APS_GROUPS_EP_NOT_FOUND ) {
++#ifdef IS_COORDINATOR
++      // No endpoint found, default to endpoint 1.
++      // In the original source code there is a return here.
++      // This prevent the messags from being forwarded.
++      // For our use-case we want to capture all messages.
++      // Even if the coordinator is not in the group.
++      epDesc = afFindEndPointDesc( 1 );
++#else
++      return;
++#endif
++    }
++    else {
++      epDesc = afFindEndPointDesc( grpEp );
++    }
+ 
+-    epDesc = afFindEndPointDesc( grpEp );
+     if ( epDesc == NULL )
+       return;   // Endpoint descriptor not found
+ 
+@@ -483,7 +495,12 @@ void afIncomingData( aps_FrameFormat_t *aff, zAddrType_t *SrcAddress, uint16_t S
+     // if the Wildcard ProfileID is received the message should not be sent to ZDO endpoint
+     if ( (aff->ProfileID == epProfileID) ||
+          ((epDesc->endPoint == ZDO_EP) && (aff->ProfileID == ZDO_PROFILE_ID)) ||
+-         ((epDesc->endPoint != ZDO_EP) && ( aff->ProfileID == ZDO_WILDCARD_PROFILE_ID )) )
++         ((epDesc->endPoint != ZDO_EP) && ( aff->ProfileID == ZDO_WILDCARD_PROFILE_ID ))
++#ifdef IS_COORDINATOR
++         // Forward messages to endpoint even with profileID mismatches
++         || ((aff->ProfileID >= 0x100) && (aff->ProfileID <= 0xFC01)) 
++#endif
++        )
+     {
+       // Save original endpoint
+       uint8_t endpoint = aff->DstEndPoint;
+diff --git a/source/ti/zstack/stack/nwk/nwk_globals.c b/source/ti/zstack/stack/nwk/nwk_globals.c
+index f90e3164f..cb57e8868 100644
+--- a/source/ti/zstack/stack/nwk/nwk_globals.c
++++ b/source/ti/zstack/stack/nwk/nwk_globals.c
+@@ -91,10 +91,10 @@
+  * CONSTANTS
+  */
+ // Maximums for the data buffer queue
+-#define NWK_MAX_DATABUFS_WAITING    8     // Waiting to be sent to MAC
+-#define NWK_MAX_DATABUFS_SCHEDULED  5     // Timed messages to be sent
+-#define NWK_MAX_DATABUFS_CONFIRMED  5     // Held after MAC confirms
+-#define NWK_MAX_DATABUFS_TOTAL      12    // Total number of buffers
++#define NWK_MAX_DATABUFS_WAITING    48    // Waiting to be sent to MAC
++#define NWK_MAX_DATABUFS_SCHEDULED  30    // Timed messages to be sent
++#define NWK_MAX_DATABUFS_CONFIRMED  30    // Held after MAC confirms
++#define NWK_MAX_DATABUFS_TOTAL      72    // Total number of buffers
+ 
+ // 1-255 (0 -> 256) X RTG_TIMER_INTERVAL
+ // A known shortcoming is that when a message is enqueued as "hold" for a
+diff --git a/source/ti/zstack/stack/nwk/nwk_util.h b/source/ti/zstack/stack/nwk/nwk_util.h
+index 468227b32..804bd303b 100644
+--- a/source/ti/zstack/stack/nwk/nwk_util.h
++++ b/source/ti/zstack/stack/nwk/nwk_util.h
+@@ -638,6 +638,10 @@ extern uint8_t (*pNwkNotMyChildListAdd)( uint16_t devAddr, uint32_t timeoutValue
+ extern void (*pNwkNotMyChildListDelete)( uint16_t devAddr );
+ extern void (*pNwkNotMyChildSendLeave)( uint16_t dstAddr );
+ 
++// Custom functions
++void NwkNotMyChildSendLeaveCustom (uint16_t dstAddr);
++uint8_t NwkDisableChildAgingLeaveAdd(uint8_t* extAddr, uint8_t numBytesToMatch);
++
+ /****************************************************************************
+  * Utility function to copy NV items
+  ****************************************************************************/
+diff --git a/source/ti/zstack/stack/sys/zcomdef.h b/source/ti/zstack/stack/sys/zcomdef.h
+index 57e0aa34b..bdc449029 100644
+--- a/source/ti/zstack/stack/sys/zcomdef.h
++++ b/source/ti/zstack/stack/sys/zcomdef.h
+@@ -123,6 +123,11 @@ extern "C"
+ #define ZCD_NV_STARTUP_OPTION             0x0003
+ #define ZCD_NV_START_DELAY                0x0004
+ 
++#ifdef IS_ROUTER
++// Custom transmit power NV item
++#define ZCD_NV_TRANSMIT_POWER             0x0010
++#endif
++
+ // NWK Layer NV item IDs
+ #define ZCD_NV_NIB                        0x0021
+ #define ZCD_NV_DEVICE_LIST                0x0022
+diff --git a/source/ti/zstack/stack/sys/zglobals.c b/source/ti/zstack/stack/sys/zglobals.c
+index 0a1d7d2a6..3d0801eda 100644
+--- a/source/ti/zstack/stack/sys/zglobals.c
++++ b/source/ti/zstack/stack/sys/zglobals.c
+@@ -131,7 +131,11 @@ uint8_t zgSecurePermitJoin = TRUE;
+ // TC Link Key. In this scenario, if this flag is TRUE, the Trust Center will
+ // encrypt the outgoing NWK Key with the default TC Link Key (ZigbeeAlliance09).
+ // If this flag is FALSE (default), the Trust Center will not send the NWK Key at all.
+-uint8_t zgAllowRejoinsWithWellKnownKey = FALSE;
++#ifdef IS_COORDINATOR
++uint8_t zgAllowRejoinsWithWellKnownKey = TRUE; // https://e2e.ti.com/support/wireless-connectivity/zigbee-and-thread/f/158/p/882650/3265311#3265311
++#else
++uint8_t zgAllowRejoinsWithWellKnownKey = FALSE; 
++#endif
+ 
+ //allowInstallCodes
+ uint8_t zgAllowInstallCodes = ZG_IC_SUPPORTED_NOT_REQUIRED;
+diff --git a/source/ti/zstack/stack/zcl/zcl.c b/source/ti/zstack/stack/zcl/zcl.c
+index 5d3af48da..ea186c298 100644
+--- a/source/ti/zstack/stack/zcl/zcl.c
++++ b/source/ti/zstack/stack/zcl/zcl.c
+@@ -47,6 +47,8 @@
+ #include "zcl.h"
+ #include "zcl_general.h"
+ 
++#include "osal_nv.h"
++
+ #if defined ( INTER_PAN ) || defined ( BDB_TL_INITIATOR ) || defined ( BDB_TL_TARGET )
+   #include "stub_aps.h"
+ #endif
+@@ -4675,6 +4677,16 @@ static uint8_t zclProcessInWriteCmd( zclIncoming_t *pInMsg )
+             status = zclWriteAttrData( pInMsg->msg->endPoint, &(pInMsg->msg->srcAddr),
+                                        &attrRec, statusRec );
+           }
++
++#ifdef IS_ROUTER
++          if((pInMsg->msg->clusterId == ZCL_CLUSTER_ID_GENERAL_BASIC) && (statusRec->attrID == ATTRID_BASIC_TRANSMIT_POWER))
++          {
++              int8_t transmitPower;
++              OsalPort_memcpy((int8_t*)&transmitPower,statusRec->attrData,sizeof(int8_t));
++              ZMacSetTransmitPower( (ZMacTransmitPower_t)transmitPower );
++              osal_nv_write( ZCD_NV_TRANSMIT_POWER, sizeof( transmitPower ), &transmitPower );
++          }
++#endif
+         }
+         else // Use CB
+         {
+diff --git a/source/ti/zstack/stack/zdo/zd_app.c b/source/ti/zstack/stack/zdo/zd_app.c
+index d67a7798a..4e6e38295 100644
+--- a/source/ti/zstack/stack/zdo/zd_app.c
++++ b/source/ti/zstack/stack/zdo/zd_app.c
+@@ -3163,6 +3163,14 @@ void ZDO_NetworkStatusCB( uint16_t nwkDstAddr, uint8_t statusCode, uint16_t dstA
+     // Routing error for dstAddr, this is informational and a Route
+     // Request should happen automatically.
+   }
++
++  if ( (nwkDstAddr == NLME_GetShortAddr())
++        && (statusCode == NWKSTAT_SOURCE_ROUTE_FAILURE) )
++  {
++    // Received a source route failure, remove route and rediscover.
++    RTG_RemoveRtgEntry( dstAddr, 0 );
++    NLME_RouteDiscoveryRequest( dstAddr, 0, 30 );
++  }
+ }
+ 
+ /******************************************************************************
+diff --git a/source/ti/zstack/stack/zdo/zd_object.c b/source/ti/zstack/stack/zdo/zd_object.c
+index 0c62d58d6..d1f899cec 100644
+--- a/source/ti/zstack/stack/zdo/zd_object.c
++++ b/source/ti/zstack/stack/zdo/zd_object.c
+@@ -676,6 +676,20 @@ void ZDO_ProcessNodeDescReq( zdoIncomingMsg_t *inMsg )
+ 
+   if ( desc != NULL )
+   {
++    uint8_t extAddr[Z_EXTADDR_LEN];
++    // Respond with Xiaomi manufacturer code when ieeAddr is withing Xiaomi address space
++    // Otherwise some devices don't work
++    // https://github.com/Koenkk/zigbee2mqtt/issues/9274
++    if (APSME_LookupExtAddr(inMsg->srcAddr.addr.shortAddr, extAddr) == TRUE &&
++         ((extAddr[7] == 0x04 && extAddr[6] == 0xcf && extAddr[5] == 0x8c) ||
++          (extAddr[7] == 0x54 && extAddr[6] == 0xef && extAddr[5] == 0x44))) {
++        desc->ManufacturerCode[0] = 0x5f;
++        desc->ManufacturerCode[1] = 0x11;
++    } else {
++        desc->ManufacturerCode[0] = 0x0;
++        desc->ManufacturerCode[1] = 0x0;
++    }
++
+     ZDP_NodeDescMsg( inMsg, aoi, desc );
+   }
+   else
+diff --git a/source/ti/zstack/stack/zdo/zd_sec_mgr.c b/source/ti/zstack/stack/zdo/zd_sec_mgr.c
+index 65d7857cc..3ae6825da 100644
+--- a/source/ti/zstack/stack/zdo/zd_sec_mgr.c
++++ b/source/ti/zstack/stack/zdo/zd_sec_mgr.c
+@@ -88,6 +88,7 @@ extern "C"
+ 
+ #include <ti/drivers/TRNG.h>
+ #include <ti/drivers/cryptoutils/cryptokey/CryptoKeyPlaintext.h>
++#include "ti_drivers_config.h"
+ 
+ /******************************************************************************
+  * CONSTANTS
+@@ -145,6 +146,8 @@ typedef struct
+  */
+ extern CONST uint8_t gMAX_NWK_SEC_MATERIAL_TABLE_ENTRIES;
+ extern pfnZdoCb zdoCBFunc[MAX_ZDO_CB_FUNC];
++bool gLedsDisabled = FALSE;
++LED_Handle gLedHandle;
+ 
+ /******************************************************************************
+  * EXTERNAL FUNCTIONS
+@@ -1545,6 +1548,23 @@ void ZDSecMgrConfig( void )
+   }
+ }
+ 
++void updateLED( void )
++{
++    if (gLedHandle == NULL) {
++      LED_Params ledParams;
++      LED_Params_init(&ledParams);
++      gLedHandle = LED_open(CONFIG_LED_GREEN, &ledParams);
++    }
++
++    if (gLedsDisabled == FALSE && gLedHandle != NULL) {
++        if (ZDSecMgrPermitJoiningEnabled == TRUE) {
++            LED_setOn(gLedHandle, LED_BRIGHTNESS_MAX);
++        } else {
++            LED_setOff(gLedHandle);
++        }
++    }
++}
++
+ /******************************************************************************
+  * @fn          ZDSecMgrPermitJoining
+  *
+@@ -1573,6 +1593,7 @@ uint8_t ZDSecMgrPermitJoining( uint8_t duration )
+     ZDSecMgrPermitJoiningEnabled = FALSE;
+   }
+ 
++  updateLED();
+   accept = TRUE;
+ 
+   return accept;
+@@ -1594,6 +1615,8 @@ void ZDSecMgrPermitJoiningTimeout( void )
+     ZDSecMgrPermitJoiningEnabled = FALSE;
+     ZDSecMgrPermitJoiningTimed   = FALSE;
+   }
++
++  updateLED();
+ }
+ 
+ /******************************************************************************
+diff --git a/source/ti/zstack/stack/zdo/zd_sec_mgr.h b/source/ti/zstack/stack/zdo/zd_sec_mgr.h
+index b1ab5fcf4..a85f0ca08 100644
+--- a/source/ti/zstack/stack/zdo/zd_sec_mgr.h
++++ b/source/ti/zstack/stack/zdo/zd_sec_mgr.h
+@@ -77,6 +77,8 @@ extern "C"
+ #include "zcomdef.h"
+ #include "zd_app.h"
+ 
++#include <ti/drivers/apps/LED.h>
++
+ /******************************************************************************
+  * TYPEDEFS
+  */
+@@ -121,6 +123,9 @@ extern CONST uint16_t gZDSECMGR_TC_DEVICE_MAX;
+ extern CONST uint16_t gZDSECMGR_TC_DEVICE_IC_MAX;
+ extern uint8_t  gZDSECMGR_TC_ATTEMPT_DEFAULT_KEY;
+ 
++extern bool gLedsDisabled;
++extern LED_Handle gLedHandle;
++
+ typedef struct
+ {
+ uint32_t              FrameCounter;
+diff --git a/source/ti/zstack/startup/zstackstartup.c b/source/ti/zstack/startup/zstackstartup.c
+index 72073f7a9..36d913077 100644
+--- a/source/ti/zstack/startup/zstackstartup.c
++++ b/source/ti/zstack/startup/zstackstartup.c
+@@ -701,6 +701,14 @@ static void stackInit(void)
+     //Initialize default poll rates
+     nwk_InitializeDefaultPollRates();
+ 
++    // Use custom function for child aging leave requests
++    pNwkNotMyChildSendLeave = &NwkNotMyChildSendLeaveCustom;
++
++    // Disable child aging leave for Xiaomi/Aqara extAddr range to prevent them from being kicekd out of the network.
++    // They do not support child aging.
++    uint8_t extAddrXiaomi [] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x8d, 0x15, 0x00};
++    NwkDisableChildAgingLeaveAdd(extAddrXiaomi, 3);
++
+     /* Initialize MAC buffer */
+     macLowLevelBufferInit();

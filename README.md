@@ -5,4 +5,4 @@
 
 This repository contains building tools and firmware releases for Texas Instruments adapters.
 
-It uses the Texas Instruments SDKs and proprietary Texas Instruments tools like Code Compose Studio. More: https://github.com/TexasInstruments/
+It uses the Texas Instruments SDKs and proprietary Texas Instruments tools like Code Composer Studio. More: https://github.com/TexasInstruments/

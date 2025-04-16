@@ -7,21 +7,31 @@ on:
         type: boolean
         description: 'Display help for various commands'
         required: false
+      debug:
+        type: boolean
+        description: 'Output build data to artifacts'
+        required: false
   release:
     types:
       - published
 
 env:
   REGISTRY: ghcr.io
-  CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /build
+  CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/workspace
   CCS_INIT: -application com.ti.ccstudio.apps.initialize
   CCS_INSPECT: -application com.ti.ccstudio.apps.inspect
   CCS_CREATE: -application com.ti.ccstudio.apps.createProject
   CCS_IMPORT: -application com.ti.ccstudio.apps.importProject
   CCS_MODIFY: -application com.ti.ccstudio.apps.modifyProject
   CCS_BUILD: -application com.ti.ccstudio.apps.buildProject
+  SYSCFG_CLI: /opt/sysconfig_1.21.1/sysconfig_cli.sh
+  SYSCFG_DEFAULT_ARGS: device.enableDCDC=false;
   SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
-  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.2.LTS -ccs.outputFormat ELF
+  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.2.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/ti/zstack/stack/nwk/nwk_util.c
+  # -ccs.enableHexTool true -ccs.setHexOptions "--output-target ihex"
+  # -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;"
+  # -ccs.outputFormat ELF
+  I_PREINCLUDE: -include /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h
 
 jobs:
   build-container:
@@ -152,15 +162,124 @@ jobs:
         if: ${{ inputs.help }}
         run: ${{ env.CCS_CMD }} ${{ env.CCS_BUILD }} -ccs.help
 
-      # "other" first because of the rename required
-      - name: Import & Copy "other" znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang into workspace
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_IMPORT }} -ccs.copyIntoWorkspace true -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.renameTo znp_CC1352P_2_other_tirtos7_ticlang
+      - name: Apply SDK patches
+        run: |
+          echo "Setting build date"
+          now=$(date +"%Y%m%d")
 
-      - name: Import & Copy "other" zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang into workspace
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_IMPORT }} -ccs.copyIntoWorkspace true -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.renameTo zr_genericapp_CC1352P_2_other_tirtos7_ticlang
+          sed -i -e "s+#define CODE_REVISION_NUMBER 00000000+#define CODE_REVISION_NUMBER $now+g" $PWD/sdk/source/preinclude.h
 
-      - name: Import & Copy projects into workspace
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_IMPORT }} -ccs.copyIntoWorkspace true -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC26X2R1_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC1352P7_4/zstack/znp/tirtos7/ticlang/znp_LP_CC1352P7_4_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652R7/zstack/znp/tirtos7/ticlang/znp_LP_CC2652R7_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RB/zstack/znp/tirtos7/ticlang/znp_LP_CC2652RB_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC2674P10/zstack/znp/tirtos7/ticlang/znp_LP_EM_CC2674P10_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/CC26X2R1_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC1352P7_4/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652R7/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC2652R7_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RB/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC2652RB_tirtos7_ticlang.projectspec -ccs.location ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC2674P10/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang.projectspec
+          now_arr="'$(expr substr $now 1 1)','$(expr substr $now 2 1)','$(expr substr $now 3 1)','$(expr substr $now 4 1)','$(expr substr $now 5 1)','$(expr substr $now 6 1)','$(expr substr $now 7 1)','$(expr substr $now 8 1)'"
+
+          sed -i -e "s+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, '0','0','0','0','0','0','0','0' }+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, $now_arr }+g" $PWD/sdk/source/preinclude.h
+
+          echo "Copying new source"
+          cp -rf $PWD/sdk/source/* ${{ env.SDK_PATH }}/source/
+
+          echo "Patching SDK"
+          patch -p1 -d ${{ env.SDK_PATH }} -i $PWD/patches/sdk.patch
+
+      - name: Create project znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/znp.syscfg
+          cp -rf $PWD/syscfg/zstack_CC1352P_2_LAUNCHXL_tirtos7_ticlang/* ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/
+
+      - name: Create project znp_CC1352P_2_other_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name znp_CC1352P_2_other_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR -UCONFIG_RF_24GHZ -DCONFIG_RF_24GHZ=6 -UCONFIG_RF_HIGH_PA -DCONFIG_RF_HIGH_PA=5"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_other_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_other_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_CC1352P_2_other_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_other_tirtos7_ticlang/znp.syscfg
+          cp -rf $PWD/syscfg/zstack_CC1352P_2_LAUNCHXL_tirtos7_ticlang/* ${{ env.SDK_PATH }}/workspace/znp_CC1352P_2_other_tirtos7_ticlang/
+
+      - name: Create project znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC26X2R1_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/znp.syscfg
+  
+      - name: Create project znp_LP_CC1352P7_4_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC1352P7_4/zstack/znp/tirtos7/ticlang/znp_LP_CC1352P7_4_tirtos7_ticlang.projectspec -ccs.name znp_LP_CC1352P7_4_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC1352P7_4_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC1352P7_4_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_LP_CC1352P7_4_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC1352P7_4_tirtos7_ticlang/znp.syscfg
+  
+      - name: Create project znp_LP_CC2652R7_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652R7/zstack/znp/tirtos7/ticlang/znp_LP_CC2652R7_tirtos7_ticlang.projectspec -ccs.name znp_LP_CC2652R7_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652R7_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652R7_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_LP_CC2652R7_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652R7_tirtos7_ticlang/znp.syscfg
+  
+      - name: Create project znp_LP_CC2652RB_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RB/zstack/znp/tirtos7/ticlang/znp_LP_CC2652RB_tirtos7_ticlang.projectspec -ccs.name znp_LP_CC2652RB_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652RB_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652RB_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_LP_CC2652RB_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652RB_tirtos7_ticlang/znp.syscfg
+  
+      - name: Create project znp_LP_EM_CC2674P10_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC2674P10/zstack/znp/tirtos7/ticlang/znp_LP_EM_CC2674P10_tirtos7_ticlang.projectspec -ccs.name znp_LP_EM_CC2674P10_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_EM_CC2674P10_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_EM_CC2674P10_tirtos7_ticlang/znp.syscfg
+          cat $PWD/syscfg/zstack/znp_LP_EM_CC2674P10_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_EM_CC2674P10_tirtos7_ticlang/znp.syscfg
+  
+      - name: Create project zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/zr_genericapp.syscfg
+          cp -rf $PWD/syscfg/zstack_CC1352P_2_LAUNCHXL_tirtos7_ticlang/* ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang/
+
+      - name: Create project zr_genericapp_CC1352P_2_other_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_CC1352P_2_other_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER -UCONFIG_RF_24GHZ -DCONFIG_RF_24GHZ=6 -UCONFIG_RF_HIGH_PA -DCONFIG_RF_HIGH_PA=5"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_other_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_other_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_CC1352P_2_other_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_other_tirtos7_ticlang/zr_genericapp.syscfg
+          cp -rf $PWD/syscfg/zstack_CC1352P_2_LAUNCHXL_tirtos7_ticlang/* ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC1352P_2_other_tirtos7_ticlang/
+
+      - name: Create project zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC26X2R1_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/zr_genericapp.syscfg
+
+      - name: Create project zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC1352P7_4/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang/zr_genericapp.syscfg
+
+      - name: Create project zr_genericapp_LP_CC2652R7_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652R7/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC2652R7_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_LP_CC2652R7_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC2652R7_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC2652R7_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_LP_CC2652R7_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC2652R7_tirtos7_ticlang/zr_genericapp.syscfg
+
+      - name: Create project zr_genericapp_LP_CC2652RB_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RB/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_CC2652RB_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_LP_CC2652RB_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC2652RB_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC2652RB_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_LP_CC2652RB_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_CC2652RB_tirtos7_ticlang/zr_genericapp.syscfg
+
+      - name: Create project zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang
+        run: |
+          ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC2674P10/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER"
+          cat $PWD/syscfg/zstack/all_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang/zr_genericapp.syscfg
+          cat $PWD/syscfg/zstack/zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang.syscfg.js >> ${{ env.SDK_PATH }}/workspace/zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang/zr_genericapp.syscfg
 
       # Other zstack projects:
       # - ${{ env.SDK_PATH }}/examples/rtos/CC1352P_4_LAUNCHXL
@@ -172,68 +291,50 @@ jobs:
       # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_1
       # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_6
 
-      - name: Modify project znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_CC1352P_2_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.debug }}
+        with:
+            name: pre_build_dir
+            # all patched files, all zstack code, all workspace projects & workspace log file
+            path: |
+              ${{ env.SDK_PATH }}/source/ti/zstack/stack/nwk/nwk_util.c
+              ${{ env.SDK_PATH }}/source/preinclude.h
+              ${{ env.SDK_PATH }}/source/ti/zstack/**/*.cmd
+              ${{ env.SDK_PATH }}/source/ti/zstack/**/*.c
+              ${{ env.SDK_PATH }}/source/ti/zstack/**/*.h
+              ${{ env.SDK_PATH }}/workspace/*
+              !${{ env.SDK_PATH }}/workspace/.metadata
+              ${{ env.SDK_PATH }}/workspace/.metadata/.log
+            include-hidden-files: true
 
-      - name: Modify project znp_CC1352P_2_other_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_CC1352P_2_other_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project znp_LP_CC1352P7_4_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_LP_CC1352P7_4_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project znp_LP_CC2652R7_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_LP_CC2652R7_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project znp_LP_CC2652RB_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_LP_CC2652RB_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project znp_LP_EM_CC2674P10_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project znp_LP_EM_CC2674P10_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project zr_genericapp_CC1352P_2_other_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_CC1352P_2_other_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_CC26X2R1_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_LP_CC1352P7_4_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project zr_genericapp_LP_CC2652R7_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_LP_CC2652R7_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project zr_genericapp_LP_CC2652RB_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_LP_CC2652RB_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
-
-      - name: Modify project zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang
-        run: ${{ env.CCS_CMD }} ${{ env.CCS_MODIFY }} -ccs.project zr_genericapp_LP_EM_CC2674P10_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }}
+      # `-ccs.setPostBuildStep` doesn't appear to work nor does `-ccs.enableHexTool`...
+      - name: Apply postbuildStep patch
+        run: |
+          sed -i -e 's+parent="com.ti.ccstudio.buildDefinitions.TMS470.Default".*+parent="com.ti.ccstudio.buildDefinitions.TMS470.Default" postbuildStep="${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;">+g' ${{ env.SDK_PATH }}/workspace/**/.cproject
 
       - name: Build workspace projects
         run: ${{ env.CCS_CMD }} ${{ env.CCS_BUILD }} -ccs.workspace -ccs.buildType full -ccs.listErrors
 
       - uses: actions/upload-artifact@v4
+        if: ${{ inputs.debug }}
         with:
             name: build_dir
-            # any `zstack` & the workspace log file
+            # all patched files, all zstack code, all workspace projects & workspace log file
             path: |
-              /build/gpd_*
-              /build/zc_*
-              /build/zed_*
-              /build/znp_*
-              /build/zr_*
-              /build/.metadata/.log
+              ${{ env.SDK_PATH }}/source/ti/zstack/stack/nwk/nwk_util.c
+              ${{ env.SDK_PATH }}/source/preinclude.h
+              ${{ env.SDK_PATH }}/source/ti/zstack/**/*.cmd
+              ${{ env.SDK_PATH }}/source/ti/zstack/**/*.c
+              ${{ env.SDK_PATH }}/source/ti/zstack/**/*.h
+              ${{ env.SDK_PATH }}/workspace/*
+              !${{ env.SDK_PATH }}/workspace/.metadata
+              ${{ env.SDK_PATH }}/workspace/.metadata/.log
             include-hidden-files: true
 
       - uses: actions/upload-artifact@v4
         with:
             name: firmware_builds
-            path: /build/**/*.hex
+            path: ${{ env.SDK_PATH }}/workspace/**/*.hex
 
   release-assets:
     name: Upload release assets
