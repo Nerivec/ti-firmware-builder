@@ -2,7 +2,8 @@
 Device.dioBootloaderBackdoor = 15;
 Device.xoscCapArrayDelta = 0xfa;
 
-// RFCustom.radioConfigieee154.highPA = true;
+RFCustom.radioConfigieee154.highPA = true;
+RFCustom.radioConfigieee154.txPowerHi = "20";
 
 // TODO: not working, currently set in workflow directly
 // CONFIG_RF_24GHZ
