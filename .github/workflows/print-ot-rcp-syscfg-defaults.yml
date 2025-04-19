@@ -1,0 +1,60 @@
+name: Print OT RCP SysConfig defaults
+
+on:
+  workflow_dispatch:
+
+# copy from build-ot-rcp
+env:
+  SYSCFG_ROOT: /opt/ti/sysconfig_1.22.0
+  OT_SDK_PATH: /opt/ot-ti
+  F2_SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
+  F3_SDK_PATH: /opt/simplelink_lowpower_f3_sdk_8_40_02_01
+  TICLANG_PATH: /opt/ti-cgt-armllvm_4.0.2.LTS
+
+jobs:
+  build_container:
+    name: Call
+    uses: ./.github/workflows/build-container.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  print:
+    name: Print OT RCP SysConfig defaults
+    needs: [build_container]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.build_container.outputs.container_name }}
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fix `fatal: detected dubious ownership in repository at`
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Patch syscfg with dump code
+        run:
+          cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
+
+      - name: Create project CC1352P_2_LAUNCHXL
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o CC1352P_2_LAUNCHXL -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/CC1352P_2_LAUNCHXL
+
+      - name: Create project CC26X2R1_LAUNCHXL
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o CC26X2R1_LAUNCHXL -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/CC26X2R1_LAUNCHXL
+
+      - name: Create project LP_CC1352P7_4
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_CC1352P7_4 -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_CC1352P7_4
+
+      - name: Create project LP_CC2652R7
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_CC2652R7 -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_CC2652R7
+
+      - name: Create project LP_CC2652RB
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_CC2652RB -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_CC2652RB
+
+      # not yet supported
+      # - name: Create project LP_EM_CC2674P10
+      #   run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_EM_CC2674P10 -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_EM_CC2674P10

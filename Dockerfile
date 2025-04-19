@@ -28,7 +28,9 @@ RUN \
        libgconf-2-4 \
        libncurses5 \
        libpython2.7 \
-       libtinfo5
+       libtinfo5 \
+       wget \
+       sudo
 
 # Install https://www.ti.com/tool/download/ARM-CGT-CLANG to /opt/ti-cgt-armllvm_4.0.2.LTS
 RUN \
@@ -72,5 +74,26 @@ RUN \
     && ./simplelink_cc13xx_cc26xx_sdk_8_30_01_01.run --help \
     && ./simplelink_cc13xx_cc26xx_sdk_8_30_01_01.run --mode unattended --prefix /opt \
     && rm simplelink_cc13xx_cc26xx_sdk_8_30_01_01.run
+
+# Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F3-SDK to /opt/simplelink_lowpower_f3_sdk_8_40_02_01
+RUN \
+    curl -O https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-emMPuXshOG/8.40.02.01/simplelink_lowpower_f3_sdk_8_40_02_01.run \
+    && chmod +x simplelink_lowpower_f3_sdk_8_40_02_01.run \
+    && ./simplelink_lowpower_f3_sdk_8_40_02_01.run --help \
+    && ./simplelink_lowpower_f3_sdk_8_40_02_01.run --mode unattended --prefix /opt \
+    && rm simplelink_lowpower_f3_sdk_8_40_02_01.run
+
+# Install https://github.com/TexasInstruments/ot-ti to /opt/ot-ti
+RUN \
+    cd /opt \
+    && git clone --depth 1 -b thread-v1.3-ti https://github.com/TexasInstruments/ot-ti \
+    && cd /opt/ot-ti \
+    && git rm third_party/ti_simplelink_sdk/repo_cc13xx_cc26xx \
+    && git rm third_party/ti_simplelink_sdk/repo_cc23xx_cc27xx \
+    && ln -s -f /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01 /opt/ot-ti/third_party/ti_simplelink_sdk/repo_cc13xx_cc26xx \
+    && ln -s -f /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01 /opt/ot-ti/third_party/ti_simplelink_sdk/repo_cc23xx_cc27xx \
+    && git submodule update --init --depth 1 \
+    && ./script/bootstrap \
+    && cd ..
 
 WORKDIR /build

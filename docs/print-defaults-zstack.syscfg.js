@@ -5,18 +5,22 @@ function iterObj(obj, curKey) {
     for (const key in obj) {
         const val = obj[key];
 
-        if (Object.hasOwn(obj, key) && !key.startsWith('$') && typeof val !== 'function') {
-            const isArray = Array.isArray(val);
-
-            if (typeof val === 'object' && !isArray) {
-                iterObj(val, `${curKey}.${key}`);
+        if (Object.hasOwn(obj, key) && typeof val !== 'function') {
+            if (key.startsWith('$')) {
+                console.log(`// ${curKey}.${key}`);
             } else {
-                const keyType = typeof val;
-                const eLeft = keyType === 'string' ? '"' : isArray ? '[' : '';
-                const eRight = keyType === 'string' ? '"' : isArray ? ']' : '';
-                const jsVal = isArray ? val.map((v) => typeof v === 'string' ? `"${v}"` : v) : val;
+                const isArray = Array.isArray(val);
 
-                console.log(`${curKey}.${key} = ${eLeft}${jsVal}${eRight}; // type: ${isArray ? val.length > 0 ? `${typeof val[0]}[]`: 'unknown[]' : keyType}`);
+                if (typeof val === 'object' && !isArray) {
+                    iterObj(val, `${curKey}.${key}`);
+                } else {
+                    const keyType = typeof val;
+                    const eLeft = keyType === 'string' ? '"' : isArray ? '[' : '';
+                    const eRight = keyType === 'string' ? '"' : isArray ? ']' : '';
+                    const jsVal = isArray ? val.map((v) => typeof v === 'string' ? `"${v}"` : v) : val;
+
+                    console.log(`${curKey}.${key} = ${eLeft}${jsVal}${eRight}; // type: ${isArray ? val.length > 0 ? `${typeof val[0]}[]`: 'unknown[]' : keyType}`);
+                }
             }
         }
     }

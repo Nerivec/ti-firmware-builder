@@ -1,6 +1,7 @@
 name: Create or get build container image
 
 on:
+  workflow_dispatch:
   workflow_call:
     outputs:
       tag_name:
@@ -82,8 +83,8 @@ jobs:
           context: .
           file: Dockerfile
           tags: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:${{ steps.read-repo-info.outputs.tag_name }}
-          cache-from: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
-          cache-to: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }},mode=max
           push: true
 
     outputs:

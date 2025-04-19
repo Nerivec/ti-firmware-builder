@@ -1,0 +1,131 @@
+name: Build OT RCP firmware
+
+on:
+  workflow_dispatch:
+    inputs:
+      help:
+        type: boolean
+        description: 'Display help for various commands'
+        required: false
+      debug:
+        type: boolean
+        description: 'Output build data to artifacts'
+        required: false
+  release:
+    types:
+      - published
+
+env:
+  SYSCFG_ROOT: /opt/ti/sysconfig_1.22.0
+  OT_SDK_PATH: /opt/ot-ti
+  F2_SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
+  F3_SDK_PATH: /opt/simplelink_lowpower_f3_sdk_8_40_02_01
+  TICLANG_PATH: /opt/ti-cgt-armllvm_4.0.2.LTS
+
+jobs:
+  build_container:
+    name: Call
+    uses: ./.github/workflows/build-container.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  build_firmwares:
+    name: Build OT RCP firmware
+    needs: [build_container]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.build_container.outputs.container_name }}
+      options: --user root
+    strategy:
+      matrix:
+        include:
+          # Currently supported:
+          # CC1352P1_LAUNCHXL,CC1352P_2_LAUNCHXL,CC1352P_4_LAUNCHXL,CC1352R1_LAUNCHXL,CC26X2R1_LAUNCHXL,LP_CC1352P7_1,LP_CC1352P7_4
+          # LP_CC2652PSIP,LP_CC2652R7,LP_CC2652RB,LP_CC2652RSIP,LP_EM_CC1354P10_1,LP_EM_CC1354P10_6,LP_CC2653P10,CC2674P10RGZ,CC2674P10RSK,
+          # CC2674R10RGZ,CC2674R10RSK,LP_EM_CC2340R5,LP_EM_CC2340R53,LP_EM_CC2745R10_Q1
+          - name: CC26X2R1_LAUNCHXL
+          - name: CC1352P_2_LAUNCHXL
+          - name: CC1352P_2_other
+            board_name: CC1352P_2_LAUNCHXL
+            other: true
+          - name: LP_CC1352P7_4
+          - name: LP_CC2652R7
+          - name: LP_CC2652RB
+          # not yet supported
+          # - name: LP_EM_CC2674P10
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fix `fatal: detected dubious ownership in repository at`
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - run: tree -d /opt
+        if: ${{ inputs.help }}
+
+      - name: Apply SDK patches
+        run: |
+          echo "Setting build date"
+          now=$(date +"%Y%m%d")
+
+          sed -i -e "s+OT_PACKAGE_VERSION \"1.3.0.1\"+OT_PACKAGE_VERSION \"1.3.0.1-$now\"+g" ${{ env.OT_SDK_PATH }}/CMakeLists.txt
+
+      - name: Patch syscfg
+        run: |
+          cat $PWD/syscfg/ot-rcp/all.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
+          cat $PWD/syscfg/ot-rcp/${{ matrix.name }}.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
+
+      # XXX: this is nasty (patch to patch to patch...)
+      - name: Patch "other" mid-build
+        if: ${{ matrix.other }}
+        run: |
+          chmod +x $PWD/syscfg/ot-rcp_CC1352P_2_other/script.build-patch.sh
+          chmod +x $PWD/syscfg/ot-rcp_CC1352P_2_other/ti_drivers_config.h-patch.sh
+          sed -i -e "s+-B \${builddir}+-B \${builddir}\n    $PWD/syscfg/ot-rcp_CC1352P_2_other/script.build-patch.sh+g" ${{ env.OT_SDK_PATH }}/script/build
+
+      - name: Build firmware
+        run: |
+          cd ${{ env.OT_SDK_PATH }}
+          TI_SYSCONFIG_ROOT=${{ env.SYSCFG_ROOT }} ./script/build ${{ matrix.board_name || matrix.name }}
+
+      - name: Create firmware hex
+        run: ${{ env.TICLANG_PATH }}/bin/tiarmobjcopy ${{ env.OT_SDK_PATH }}/build/bin/ot-rcp.out --output-target ihex ${{ env.OT_SDK_PATH }}/build/bin/openthread_${{ matrix.name }}.hex
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.debug }}
+        with:
+            name: build_dir_${{ matrix.name }}
+            path: |
+              ${{ env.OT_SDK_PATH }}/build/
+              !${{ env.OT_SDK_PATH }}/build/**/*.a
+              !${{ env.OT_SDK_PATH }}/build/**/*.obj
+            include-hidden-files: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+            name: firmware_build_${{ matrix.name }}
+            path: ${{ env.OT_SDK_PATH }}/build/bin/*.hex
+
+  release-assets:
+    name: Upload release assets
+    needs: [build_firmwares]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download firmware builds artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: firmware_build_*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Upload artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.hex
