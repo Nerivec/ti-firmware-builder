@@ -103,6 +103,8 @@ jobs:
               ${{ env.OT_SDK_PATH }}/build/
               !${{ env.OT_SDK_PATH }}/build/**/*.a
               !${{ env.OT_SDK_PATH }}/build/**/*.obj
+              !${{ env.OT_SDK_PATH }}/build/**/*.lib
+              !${{ env.OT_SDK_PATH }}/build/**/*.bin
             include-hidden-files: true
 
       - uses: actions/upload-artifact@v4
