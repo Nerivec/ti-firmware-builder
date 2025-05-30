@@ -6,10 +6,13 @@ on:
     outputs:
       tag_name:
         value: ${{ jobs.build_container.outputs.tag_name }}
+        description: The tag name of the container
       image_name:
         value: ${{ jobs.build_container.outputs.image_name }}
+        description: The image name of the container
       container_name:
         value: ${{ jobs.build_container.outputs.container_name }}
+        description: The name of the container
 
 env:
   REGISTRY: ghcr.io
