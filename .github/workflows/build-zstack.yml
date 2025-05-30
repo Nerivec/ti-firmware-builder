@@ -98,9 +98,16 @@ jobs:
 
           sed -i -e "s+#define CODE_REVISION_NUMBER 00000000+#define CODE_REVISION_NUMBER $now+g" $PWD/sdk/source/preinclude.h
 
-          now_arr="'$(cut -c 1-1 <<< $now)','$(cut -c 2-2 <<< $now)','$(cut -c 3-3 <<< $now)','$(cut -c 4-4 <<< $now)','$(cut -c 5-5 <<< $now)','$(cut -c 6-6 <<< $now)','$(cut -c 7-7 <<< $now)','$(cut -c 8-8 <<< $now)'"
+          n1=$(cut -c 1-1 <<< $now)
+          n2=$(cut -c 2-2 <<< $now)
+          n3=$(cut -c 3-3 <<< $now)
+          n4=$(cut -c 4-4 <<< $now)
+          n5=$(cut -c 5-5 <<< $now)
+          n6=$(cut -c 6-6 <<< $now)
+          n7=$(cut -c 7-7 <<< $now)
+          n8=$(cut -c 8-8 <<< $now)
 
-          sed -i -e "s+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, '0','0','0','0','0','0','0','0' }+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, $now_arr }+g" $PWD/sdk/source/preinclude.h
+          sed -i -e "s+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, '0','0','0','0','0','0','0','0' }+#define ZCL_GENERIC_APP_SW_BUILD_ID { 8, '$n1','$n2','$n3','$n4','$n5','$n6','$n7','$n8' }+g" $PWD/sdk/source/preinclude.h
 
           echo "Copying new source"
           cp -rf $PWD/sdk/* ${{ env.SDK_PATH }}/
