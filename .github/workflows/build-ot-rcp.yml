@@ -59,7 +59,7 @@ jobs:
           # not yet supported
           # - name: LP_EM_CC2674P10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Fix `fatal: detected dubious ownership in repository at`
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
