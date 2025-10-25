@@ -37,7 +37,9 @@ jobs:
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Patch syscfg with dump code
-        run: cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
+        run: |
+          cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
+          cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/cc23xx_cc27xx/openthread.syscfg
 
       - name: Create project CC1352P_2_LAUNCHXL
         run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o CC1352P_2_LAUNCHXL -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/CC1352P_2_LAUNCHXL
@@ -58,4 +60,4 @@ jobs:
         run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_EM_CC2674P10 -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_EM_CC2674P10
 
       - name: Create project LP_EM_CC2340R53
-        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_EM_CC2340R53 -s ${{ env.F3_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_EM_CC2340R53
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/cc23xx_cc27xx/openthread.syscfg -o LP_EM_CC2340R53 -s ${{ env.F3_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_EM_CC2340R53

@@ -33,7 +33,11 @@ iterObj(DMA, 'DMA');
 iterObj(Device, 'Device');
 iterObj(ECDH, 'ECDH');
 iterObj(ECDSA, 'ECDSA');
-iterObj(ECJPAKE, 'ECJPAKE');
+
+if (ECJPAKE) {
+    iterObj(ECJPAKE, 'ECJPAKE');
+}
+
 iterObj(GPIO, 'GPIO');
 iterObj(NVS, 'NVS');
 iterObj(Power, 'Power');
@@ -43,13 +47,8 @@ iterObj(RFDesign, 'RFDesign');
 iterObj(SHA2, 'SHA2');
 iterObj(SPI, 'SPI');
 iterObj(TRNG, 'TRNG');
-iterObj(UART2, 'UART2');
 iterObj(Watchdog, 'Watchdog');
 
-iterObj(AESECB, 'AESECB');
-iterObj(ECDH, 'ECDH');
-iterObj(ECDSA, 'ECDSA');
-iterObj(ECJPAKE, 'ECJPAKE');
 iterObj(GPIO1, 'GPIO1');
 iterObj(GPIO2, 'GPIO2');
 iterObj(GPIO3, 'GPIO3');
