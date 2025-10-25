@@ -36,6 +36,9 @@ jobs:
       # Fix `fatal: detected dubious ownership in repository at`
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - run: ls -ahl /opt
+      - run: ls -ahl /opt/ti
+
       - name: Patch syscfg with dump code
         run: cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
 
