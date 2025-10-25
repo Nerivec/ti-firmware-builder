@@ -5,7 +5,7 @@ on:
 
 # copy from build-ot-rcp
 env:
-  SYSCFG_ROOT: /opt/ti/sysconfig_1.22.0
+  SYSCFG_ROOT: /opt/ti/sysconfig_1.24.1
   OT_SDK_PATH: /opt/ot-ti
   F2_SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
   F3_SDK_PATH: /opt/simplelink_lowpower_f3_sdk_9_12_00_19
@@ -35,9 +35,6 @@ jobs:
 
       # Fix `fatal: detected dubious ownership in repository at`
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-      - run: ls -ahl /opt
-      - run: ls -ahl /opt/ti
 
       - name: Patch syscfg with dump code
         run: cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
