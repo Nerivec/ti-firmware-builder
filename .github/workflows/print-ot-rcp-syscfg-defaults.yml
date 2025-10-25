@@ -54,6 +54,8 @@ jobs:
       - name: Create project LP_CC2652RB
         run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_CC2652RB -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_CC2652RB
 
-      # not yet supported
-      # - name: Create project LP_EM_CC2674P10
-      #   run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_EM_CC2674P10 -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_EM_CC2674P10
+      - name: Create project LP_EM_CC2674P10
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_EM_CC2674P10 -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_EM_CC2674P10
+
+      - name: Create project LP_EM_CC2340R53
+        run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o LP_EM_CC2340R53 -s ${{ env.F3_SDK_PATH }}/.metadata/product.json --board /ti/boards/LP_EM_CC2340R53
