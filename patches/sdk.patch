@@ -524,37 +524,9 @@ index f43df5cbf..f0bc7faaa 100644
    MT_BuildAndSendZToolResponse(((uint8_t)MT_RPC_CMD_SRSP | (uint8_t)MT_RPC_SYS_ZDO), cmdId, 1, &retValue);
  }
 diff --git a/source/ti/zstack/npi/npi_tl_uart.c b/source/ti/zstack/npi/npi_tl_uart.c
-index bfea71ca3..3c90f6757 100644
+index bfea71c..a943663 100644
 --- a/source/ti/zstack/npi/npi_tl_uart.c
 +++ b/source/ti/zstack/npi/npi_tl_uart.c
-@@ -1,5 +1,7 @@
- /******************************************************************************
- 
-+******************************************************************************
-+
-  @file  npi_tl_uart.c
- 
-  @brief NPI Transport Layer Module for UART
-@@ -8,7 +10,7 @@
-  Target Device: cc13xx_cc26xx
- 
-  ******************************************************************************
-- 
-+
-  Copyright (c) 2015-2024, Texas Instruments Incorporated
-  All rights reserved.
- 
-@@ -38,10 +40,6 @@
-  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
--
-- ******************************************************************************
-- 
-- 
-  *****************************************************************************/
- 
- // ****************************************************************************
 @@ -114,6 +112,8 @@ static uint16 NPITLUART_readIsrBuf(size_t size);
  //! \brief UART Callback invoked after UART write completion
  static void NPITLUART_writeCallBack(UART2_Handle handle, void *ptr, size_t size, void *userArg, int_fast16_t status);
