@@ -1,6 +1,6 @@
 # Ubuntu 24:
-#   - https://software-dl.ti.com/ccs/esd/documents/users_guide_ccs_20.1.0/ccs_installation.html#ubuntu-24-04
-#   - https://software-dl.ti.com/ccs/esd/documents/users_guide_ccs_20.1.0/ccs_installation.html#id1
+#   - https://software-dl.ti.com/ccs/esd/documents/users_guide_ccs_20.3.1/ccs_installation.html#ubuntu-24-04
+#   - https://software-dl.ti.com/ccs/esd/documents/users_guide_ccs_20.3.1/ccs_installation.html#id1
 FROM ubuntu:jammy
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -42,6 +42,7 @@ RUN \
 
 # Install https://www.ti.com/tool/download/CCSTUDIO to /opt/ccs
 # TODO: can't get rid of blackhawk, fails to install
+# https://sir.ext.ti.com/jira/browse/EXT_EP-12145
 # RUN \
 #     curl -O https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/20.3.1/CCS_20.3.1.00005_linux.zip \
 #     && unzip -q -d /opt CCS_20.3.1.00005_linux.zip \
@@ -86,7 +87,7 @@ RUN \
 # Install https://github.com/TexasInstruments/ot-ti to /opt/ot-ti
 RUN \
     cd /opt \
-    && git clone --depth 1 -b thread-v1.3-ti https://github.com/TexasInstruments/ot-ti \
+    && git clone --depth 1 -b thread-v1.4-ti https://github.com/TexasInstruments/ot-ti \
     && cd /opt/ot-ti \
     && git rm third_party/ti_simplelink_sdk/repo_cc13xx_cc26xx \
     && git rm third_party/ti_simplelink_sdk/repo_cc23xx_cc27xx \
