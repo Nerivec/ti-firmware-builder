@@ -58,31 +58,31 @@ jobs:
           ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC26X2R1_LAUNCHXL/zstack/znp/tirtos7/ticlang/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
           cat $PWD/docs/print-defaults-zstack.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/znp.syscfg
           ${{ env.SYSCFG_CLI }} --script ${{ env.SDK_PATH }}/workspace/znp_CC26X2R1_LAUNCHXL_tirtos7_ticlang/znp.syscfg -o syscfg -s ${{ env.SDK_PATH }}/.metadata/product.json --compiler ticlang
-  
+
       - name: Create project znp_LP_CC1352P7_4_tirtos7_ticlang
         run: |
           ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC1352P7_4/zstack/znp/tirtos7/ticlang/znp_LP_CC1352P7_4_tirtos7_ticlang.projectspec -ccs.name znp_LP_CC1352P7_4_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
           cat $PWD/docs/print-defaults-zstack.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC1352P7_4_tirtos7_ticlang/znp.syscfg
           ${{ env.SYSCFG_CLI }} --script ${{ env.SDK_PATH }}/workspace/znp_LP_CC1352P7_4_tirtos7_ticlang/znp.syscfg -o syscfg -s ${{ env.SDK_PATH }}/.metadata/product.json --compiler ticlang
-  
+
       - name: Create project znp_LP_CC2652R7_tirtos7_ticlang
         run: |
           ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652R7/zstack/znp/tirtos7/ticlang/znp_LP_CC2652R7_tirtos7_ticlang.projectspec -ccs.name znp_LP_CC2652R7_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
           cat $PWD/docs/print-defaults-zstack.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652R7_tirtos7_ticlang/znp.syscfg
           ${{ env.SYSCFG_CLI }} --script ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652R7_tirtos7_ticlang/znp.syscfg -o syscfg -s ${{ env.SDK_PATH }}/.metadata/product.json --compiler ticlang
-  
+
       - name: Create project znp_LP_CC2652RB_tirtos7_ticlang
         run: |
           ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_CC2652RB/zstack/znp/tirtos7/ticlang/znp_LP_CC2652RB_tirtos7_ticlang.projectspec -ccs.name znp_LP_CC2652RB_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
           cat $PWD/docs/print-defaults-zstack.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652RB_tirtos7_ticlang/znp.syscfg
           ${{ env.SYSCFG_CLI }} --script ${{ env.SDK_PATH }}/workspace/znp_LP_CC2652RB_tirtos7_ticlang/znp.syscfg -o syscfg -s ${{ env.SDK_PATH }}/.metadata/product.json --compiler ticlang
-  
+
       - name: Create project znp_LP_EM_CC2674P10_tirtos7_ticlang
         run: |
           ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC2674P10/zstack/znp/tirtos7/ticlang/znp_LP_EM_CC2674P10_tirtos7_ticlang.projectspec -ccs.name znp_LP_EM_CC2674P10_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_COORDINATOR"
           cat $PWD/docs/print-defaults-zstack.syscfg.js >> ${{ env.SDK_PATH }}/workspace/znp_LP_EM_CC2674P10_tirtos7_ticlang/znp.syscfg
           ${{ env.SYSCFG_CLI }} --script ${{ env.SDK_PATH }}/workspace/znp_LP_EM_CC2674P10_tirtos7_ticlang/znp.syscfg -o syscfg -s ${{ env.SDK_PATH }}/.metadata/product.json --compiler ticlang
-  
+
       - name: Create project zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang
         run: |
           ${{ env.CCS_CMD }} ${{ env.CCS_CREATE }} -ccs.projectSpec ${{ env.SDK_PATH }}/examples/rtos/CC1352P_2_LAUNCHXL/zstack/zr_genericapp/tirtos7/ticlang/zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang.projectspec -ccs.name zr_genericapp_CC1352P_2_LAUNCHXL_tirtos7_ticlang ${{ env.PROJECT_DEFAULTS }} -ccs.setCompilerOptions "${{ env.I_PREINCLUDE }} -DIS_ROUTER"
