@@ -16,7 +16,7 @@ on:
       - published
 
 env:
-  CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/workspace
+  CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11/workspace
   CCS_INIT: -application com.ti.ccstudio.apps.initialize
   CCS_INSPECT: -application com.ti.ccstudio.apps.inspect
   CCS_CREATE: -application com.ti.ccstudio.apps.createProject
@@ -24,12 +24,12 @@ env:
   CCS_MODIFY: -application com.ti.ccstudio.apps.modifyProject
   CCS_BUILD: -application com.ti.ccstudio.apps.buildProject
   SYSCFG_CLI: /opt/sysconfig_1.21.1/sysconfig_cli.sh
-  SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
-  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.4.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/ti/zstack/stack/nwk/nwk_util.c
+  SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
+  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.4.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11/source/ti/zstack/stack/nwk/nwk_util.c
   # -ccs.enableHexTool true -ccs.setHexOptions "--output-target ihex"
   # -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;"
   # -ccs.outputFormat ELF
-  I_PREINCLUDE: -include /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h
+  I_PREINCLUDE: -include /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11/source/preinclude.h
 
 jobs:
   build_container:
@@ -58,7 +58,7 @@ jobs:
 
       # Example output:
       # - /opt/css
-      # - /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
+      # - /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
       # - /opt/sysconfig_1.21.1
       # - /opt/ti-cgt-armllvm_4.0.4.LTS
       # - /opt/xdctools_3_62_01_15_core

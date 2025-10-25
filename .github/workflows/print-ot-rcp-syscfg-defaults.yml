@@ -7,8 +7,8 @@ on:
 env:
   SYSCFG_ROOT: /opt/ti/sysconfig_1.22.0
   OT_SDK_PATH: /opt/ot-ti
-  F2_SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
-  F3_SDK_PATH: /opt/simplelink_lowpower_f3_sdk_8_40_02_01
+  F2_SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
+  F3_SDK_PATH: /opt/simplelink_lowpower_f3_sdk_9_12_00_19
   TICLANG_PATH: /opt/ti-cgt-armllvm_4.0.4.LTS
 
 jobs:
