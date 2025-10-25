@@ -25,7 +25,7 @@ env:
   CCS_BUILD: -application com.ti.ccstudio.apps.buildProject
   SYSCFG_CLI: /opt/sysconfig_1.21.1/sysconfig_cli.sh
   SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
-  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.2.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/ti/zstack/stack/nwk/nwk_util.c
+  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.4.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/ti/zstack/stack/nwk/nwk_util.c
   # -ccs.enableHexTool true -ccs.setHexOptions "--output-target ihex"
   # -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;"
   # -ccs.outputFormat ELF
@@ -60,7 +60,7 @@ jobs:
       # - /opt/css
       # - /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
       # - /opt/sysconfig_1.21.1
-      # - /opt/ti-cgt-armllvm_4.0.2.LTS
+      # - /opt/ti-cgt-armllvm_4.0.4.LTS
       # - /opt/xdctools_3_62_01_15_core
       # - /opt/xdctools_3_62_01_16_core
       - run: tree -d /opt

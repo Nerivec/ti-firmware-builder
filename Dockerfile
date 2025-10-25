@@ -32,13 +32,13 @@ RUN \
        wget \
        sudo
 
-# Install https://www.ti.com/tool/download/ARM-CGT-CLANG to /opt/ti-cgt-armllvm_4.0.2.LTS
+# Install https://www.ti.com/tool/download/ARM-CGT-CLANG to /opt/ti-cgt-armllvm_4.0.4.LTS
 RUN \
-    curl -O https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-ayxs93eZNN/4.0.2.LTS/ti_cgt_armllvm_4.0.2.LTS_linux-x64_installer.bin \
-    && chmod +x ti_cgt_armllvm_4.0.2.LTS_linux-x64_installer.bin \
-    && ./ti_cgt_armllvm_4.0.2.LTS_linux-x64_installer.bin --help \
-    && ./ti_cgt_armllvm_4.0.2.LTS_linux-x64_installer.bin --mode unattended --prefix /opt \
-    && rm ti_cgt_armllvm_4.0.2.LTS_linux-x64_installer.bin
+    curl -O https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-ayxs93eZNN/4.0.4.LTS/ti_cgt_armllvm_4.0.4.LTS_linux-arm64_installer.bin \
+    && chmod +x ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin \
+    && ./ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin --help \
+    && ./ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin --mode unattended --prefix /opt \
+    && rm ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin
 
 # Install https://www.ti.com/tool/download/CCSTUDIO to /opt/ccs
 # TODO: can't get rid of blackhawk, fails to install

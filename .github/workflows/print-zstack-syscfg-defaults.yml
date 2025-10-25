@@ -14,7 +14,7 @@ env:
   CCS_BUILD: -application com.ti.ccstudio.apps.buildProject
   SYSCFG_CLI: /opt/sysconfig_1.21.1/sysconfig_cli.sh
   SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01
-  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.2.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/ti/zstack/stack/nwk/nwk_util.c
+  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.4.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_30_01_01/source/ti/zstack/stack/nwk/nwk_util.c
 
 jobs:
   build_container:
