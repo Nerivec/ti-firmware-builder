@@ -93,7 +93,7 @@ jobs:
       - name: Create firmware hex
         run: ${{ env.TICLANG_PATH }}/bin/tiarmobjcopy ${{ env.OT_SDK_PATH }}/build/bin/ot-rcp.out --output-target ihex ${{ env.OT_SDK_PATH }}/build/bin/openthread_${{ matrix.name }}.hex
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: ${{ inputs.debug }}
         with:
           name: build_dir_${{ matrix.name }}
@@ -105,7 +105,7 @@ jobs:
             !${{ env.OT_SDK_PATH }}/build/**/*.bin
           include-hidden-files: true
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: firmware_build_${{ matrix.name }}
           path: ${{ env.OT_SDK_PATH }}/build/bin/*.hex
