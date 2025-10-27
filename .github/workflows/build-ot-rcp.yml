@@ -119,7 +119,7 @@ jobs:
       contents: write
     steps:
       - name: Download firmware builds artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: firmware_build_*
           path: artifacts
