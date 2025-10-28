@@ -39,7 +39,7 @@ jobs:
       - name: Patch syscfg with dump code
         run: |
           cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
-          cat $PWD/docs/print-defaults-ot-rcp.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/cc23xx_cc27xx/openthread.syscfg
+          cat $PWD/docs/print-defaults-ot-rcp-f3.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/cc23xx_cc27xx/openthread.syscfg
 
       - name: Create project CC1352P_2_LAUNCHXL
         run: ${{ env.SYSCFG_ROOT }}/sysconfig_cli.sh --script ${{ env.OT_SDK_PATH }}/src/openthread.syscfg -o CC1352P_2_LAUNCHXL -s ${{ env.F2_SDK_PATH }}/.metadata/product.json --board /ti/boards/CC1352P_2_LAUNCHXL
