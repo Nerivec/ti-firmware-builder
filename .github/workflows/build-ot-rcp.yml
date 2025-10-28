@@ -72,9 +72,7 @@ jobs:
 
       - name: Patch syscfg
         run: |
-          cat $PWD/syscfg/ot-rcp/all.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
           cat $PWD/syscfg/ot-rcp/${{ matrix.name }}.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/openthread.syscfg
-          cat $PWD/syscfg/ot-rcp/all.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/cc23xx_cc27xx/openthread.syscfg
           cat $PWD/syscfg/ot-rcp/${{ matrix.name }}.syscfg.js >> ${{ env.OT_SDK_PATH }}/src/cc23xx_cc27xx/openthread.syscfg
 
       # XXX: this is nasty (patch to patch to patch...)
