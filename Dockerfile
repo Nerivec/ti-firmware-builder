@@ -68,33 +68,66 @@ RUN \
     && cd .. \
     && rm -rf /opt/CCS12.8.1.00005_linux-x64
 
-# Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F2-SDK/ to /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
-RUN \
-    curl -O https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-BPlR3djvTV/8.31.00.11/simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
-    && chmod +x simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
-    && ./simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run --help \
-    && ./simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run --mode unattended --prefix /opt \
-    && rm simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run
-
-# Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F3-SDK to /opt/simplelink_lowpower_f3_sdk_9_12_00_19
-RUN \
-    curl -O https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-emMPuXshOG/9.12.00.19/simplelink_lowpower_f3_sdk_9_12_00_19.run \
-    && chmod +x simplelink_lowpower_f3_sdk_9_12_00_19.run \
-    && ./simplelink_lowpower_f3_sdk_9_12_00_19.run --help \
-    && ./simplelink_lowpower_f3_sdk_9_12_00_19.run --mode unattended --prefix /opt \
-    && rm simplelink_lowpower_f3_sdk_9_12_00_19.run
-
 # Install https://github.com/TexasInstruments/ot-ti to /opt/ot-ti
+# bootstrap script installs sysconfig, so install first, we'll use that one for everything
+# IMPORTANT: when updating branch, always check SYSCONFIG_VERSION in ./script/bootstrap to update envs
 RUN \
     cd /opt \
     && git clone --depth 1 -b thread-v1.4-ti https://github.com/TexasInstruments/ot-ti \
     && cd /opt/ot-ti \
     && git rm third_party/ti_simplelink_sdk/repo_cc13xx_cc26xx \
     && git rm third_party/ti_simplelink_sdk/repo_cc23xx_cc27xx \
-    && ln -s -f /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11 /opt/ot-ti/third_party/ti_simplelink_sdk/repo_cc13xx_cc26xx \
-    && ln -s -f /opt/simplelink_lowpower_f3_sdk_9_12_00_19 /opt/ot-ti/third_party/ti_simplelink_sdk/repo_cc23xx_cc27xx \
+    && ln -s -f /opt/simplelink-lowpower-f2-sdk /opt/ot-ti/third_party/ti_simplelink_sdk/repo_cc13xx_cc26xx \
+    && ln -s -f /opt/simplelink-lowpower-f3-sdk /opt/ot-ti/third_party/ti_simplelink_sdk/repo_cc23xx_cc27xx \
     && git submodule update --init --depth 1 \
     && ./script/bootstrap \
+    && cd ..
+
+ENV SYSCONFIG_TOOL="/opt/ti/sysconfig_1.24.1/sysconfig_cli.sh"
+
+# Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F2-SDK/ to /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
+RUN \
+    curl -O https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-BPlR3djvTV/8.31.00.11/simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
+    && chmod +x simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
+    && ./simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run --help \
+    && ./simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run --mode unattended --prefix /opt \
+    && rm simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
+    && ln -s -f /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11 /opt/simplelink-lowpower-f2-sdk
+
+# Install https://github.com/TexasInstruments/simplelink-lowpower-f2-sdk to /opt/simplelink-lowpower-f2-sdk
+# RUN \
+#     cd /opt \
+#     && git clone --depth 1 -b lpf2-8.31.00.11 https://github.com/TexasInstruments/simplelink-lowpower-f2-sdk \
+#     && cd /opt/simplelink-lowpower-f2-sdk \
+#     && sed -i -e "s+XDC_INSTALL_DIR.*+XDC_INSTALL_DIR=/opt/ti/xdctools_3_62_01_15_core+g" ./imports.mak \
+#     && sed -i -e "s+SYSCONFIG_TOOL.*+SYSCONFIG_TOOL=/opt/ti/sysconfig_1.24.1/sysconfig_cli.sh+g" ./imports.mak \
+#     && sed -i -e "s+CMAKE.*+CMAKE=cmake+g" ./imports.mak \
+#     && sed -i -e "s+TICLANG_ARMCOMPILER.*+TICLANG_ARMCOMPILER=/opt/ti-cgt-armllvm_4.0.4.LTS+g" ./imports.mak \
+#     && sed -i -e "s+GCC_ARMCOMPILER.*++g" ./imports.mak \
+#     && sed -i -e "s+IAR_ARMCOMPILER.*++g" ./imports.mak \
+#     && make \
+#     && cd ..
+
+# # Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F3-SDK to /opt/simplelink_lowpower_f3_sdk_9_12_00_19
+# RUN \
+#     curl -O https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-emMPuXshOG/9.12.00.19/simplelink_lowpower_f3_sdk_9_12_00_19.run \
+#     && chmod +x simplelink_lowpower_f3_sdk_9_12_00_19.run \
+#     && ./simplelink_lowpower_f3_sdk_9_12_00_19.run --help \
+#     && ./simplelink_lowpower_f3_sdk_9_12_00_19.run --mode unattended --prefix /opt \
+#     && rm simplelink_lowpower_f3_sdk_9_12_00_19.run \
+#     && ln -s -f /opt/simplelink_lowpower_f3_sdk_9_12_00_19 /opt/simplelink-lowpower-f3-sdk
+
+# Install https://github.com/TexasInstruments/simplelink-lowpower-f3-sdk to /opt/simplelink-lowpower-f3-sdk
+RUN \
+    cd /opt \
+    && git clone --depth 1 -b lpf3-9.20.00.07_ea https://github.com/TexasInstruments/simplelink-lowpower-f3-sdk \
+    && cd /opt/simplelink-lowpower-f3-sdk \
+    && sed -i -e "s+SYSCONFIG_TOOL.*+SYSCONFIG_TOOL=/opt/ti/sysconfig_1.24.1/sysconfig_cli.sh+g" ./imports.mak \
+    && sed -i -e "s+CMAKE.*+CMAKE=cmake+g" ./imports.mak \
+    && sed -i -e "s+TICLANG_ARMCOMPILER.*+TICLANG_ARMCOMPILER=/opt/ti-cgt-armllvm_4.0.4.LTS+g" ./imports.mak \
+    && sed -i -e "s+GCC_ARMCOMPILER.*++g" ./imports.mak \
+    && sed -i -e "s+IAR_ARMCOMPILER.*++g" ./imports.mak \
+    && make \
     && cd ..
 
 WORKDIR /build

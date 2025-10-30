@@ -5,7 +5,7 @@ on:
 
 # copy from build-zstack
 env:
-  CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11/workspace
+  CCS_CMD: /opt/ccs/eclipse/eclipse -noSplash -data /opt/simplelink-lowpower-f2-sdk/workspace
   CCS_INIT: -application com.ti.ccstudio.apps.initialize
   CCS_INSPECT: -application com.ti.ccstudio.apps.inspect
   CCS_CREATE: -application com.ti.ccstudio.apps.createProject
@@ -13,8 +13,8 @@ env:
   CCS_MODIFY: -application com.ti.ccstudio.apps.modifyProject
   CCS_BUILD: -application com.ti.ccstudio.apps.buildProject
   SYSCFG_CLI: /opt/ti/sysconfig_1.24.1/sysconfig_cli.sh
-  SDK_PATH: /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
-  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.4.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11/source/preinclude.h -ccs.linkFile /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11/source/ti/zstack/stack/nwk/nwk_util.c
+  SDK_PATH: /opt/simplelink-lowpower-f2-sdk
+  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.4.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink-lowpower-f2-sdk/source/preinclude.h -ccs.linkFile /opt/simplelink-lowpower-f2-sdk/source/ti/zstack/stack/nwk/nwk_util.c
 
 jobs:
   build_container:

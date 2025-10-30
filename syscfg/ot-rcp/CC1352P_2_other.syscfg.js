@@ -1,7 +1,13 @@
 // CC1352P_2_other
+
+Device.enableDCDC = false;
+Device.enableBootloader = true;
+Device.enableBootloaderBackdoor = true;
+Device.levelBootloaderBackdoor = "Active low";
 Device.dioBootloaderBackdoor = 15;
 Device.xoscCapArrayDelta = 0xfa;
 
+RFCustom.radioConfigieee154.txPower = "5";
 RFCustom.radioConfigieee154.highPA = true;
 RFCustom.radioConfigieee154.txPowerHi = "20";
 
