@@ -1,0 +1,44 @@
+name: Retrieve SDK examples
+
+on:
+  workflow_dispatch:
+
+env:
+  F2_SDK_PATH: /opt/simplelink-lowpower-f2-sdk
+  F3_SDK_PATH: /opt/simplelink-lowpower-f3-sdk
+
+jobs:
+  build_container:
+    name: Call
+    uses: ./.github/workflows/build-container.yml
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  print:
+    name: Print zstack SysConfig defaults
+    needs: [build_container]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.build_container.outputs.container_name }}
+      options: --user root
+    steps:
+      - uses: actions/checkout@v5
+
+      # Fix `fatal: detected dubious ownership in repository at`
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - run: tree -d ${{ env.F2_SDK_PATH }}/examples/
+      - run: tree -d ${{ env.F3_SDK_PATH }}/examples/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdk_examples
+          path: |
+            ${{ env.F2_SDK_PATH }}/examples/*
+            ${{ env.F3_SDK_PATH }}/examples/*
+          include-hidden-files: true
