@@ -35,7 +35,7 @@ jobs:
       - run: tree -d ${{ env.F2_SDK_PATH }}/examples/
       # - run: tree -d ${{ env.F3_SDK_PATH }}/examples/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: sdk_examples
           path: |
