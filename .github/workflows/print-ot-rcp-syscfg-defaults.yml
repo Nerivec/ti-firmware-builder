@@ -31,7 +31,7 @@ jobs:
       image: ${{ needs.build_container.outputs.container_name }}
       options: --user root
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # Fix `fatal: detected dubious ownership in repository at`
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"

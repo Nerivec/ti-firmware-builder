@@ -55,7 +55,7 @@ jobs:
           # - name: LP_EM_CC2674P10
           - name: LP_EM_CC2340R53
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       # Fix `fatal: detected dubious ownership in repository at`
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
