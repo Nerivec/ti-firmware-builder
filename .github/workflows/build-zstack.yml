@@ -236,7 +236,7 @@ jobs:
       # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_1
       # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_6
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: ${{ inputs.debug }}
         with:
           name: pre_build_dir
@@ -260,7 +260,7 @@ jobs:
       - name: Build workspace projects
         run: ${{ env.CCS_CMD }} ${{ env.CCS_BUILD }} -ccs.workspace -ccs.buildType full -ccs.listErrors
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: ${{ inputs.debug }}
         with:
           name: build_dir
@@ -276,7 +276,7 @@ jobs:
             ${{ env.SDK_PATH }}/workspace/.metadata/.log
           include-hidden-files: true
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: firmware_builds
           path: ${{ env.SDK_PATH }}/workspace/**/*.hex
