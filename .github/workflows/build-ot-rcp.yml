@@ -69,6 +69,8 @@ jobs:
           now=$(date +"%Y%m%d")
 
           sed -i -e "s+OT_PACKAGE_VERSION \"1.4.0.0\"+OT_PACKAGE_VERSION \"1.4.0.0-$now\"+g" ${{ env.OT_SDK_PATH }}/CMakeLists.txt
+          sed -i -e "s+params.baudRate .*;+params.baudRate = 460800;+g" ${{ env.OT_SDK_PATH }}/src/uart.c
+          sed -i -e "s+debugParams.baudRate .*;+debugParams.baudRate = 460800;+g" ${{ env.OT_SDK_PATH }}/src/uart.c
 
       - name: Patch syscfg
         run: |
