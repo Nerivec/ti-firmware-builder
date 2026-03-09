@@ -80,7 +80,7 @@ jobs:
         if: steps.read-repo-info.outputs.build_image == 'true'
 
       - name: Build and Push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         if: steps.read-repo-info.outputs.build_image == 'true'
         with:
           context: .
