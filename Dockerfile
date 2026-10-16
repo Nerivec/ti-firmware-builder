@@ -1,12 +1,10 @@
-# Ubuntu 24:
-#   - https://software-dl.ti.com/ccs/esd/documents/users_guide_ccs_20.3.1/ccs_installation.html#ubuntu-24-04
-#   - https://software-dl.ti.com/ccs/esd/documents/users_guide_ccs_20.3.1/ccs_installation.html#id1
-FROM ubuntu:jammy
+FROM ubuntu:resolute
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN \
-    apt-get update \
+# NOTE: udev required for Blackhawk probe post-install (cannot be disabled during install for CCS 20+)
+RUN set -e \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
        bzip2 \
        ca-certificates \
@@ -23,56 +21,39 @@ RUN \
        python3-ruamel.yaml \
        unzip \
        xz-utils \
-       libc6-i386 \
-       libusb-0.1-4 \
-       libgconf-2-4 \
-       libncurses5 \
-       libpython2.7 \
-       libtinfo5 \
+       libpython3.14 \
+       udev \
        wget \
-       sudo
+       sudo \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install https://www.ti.com/tool/download/ARM-CGT-CLANG to /opt/ti-cgt-armllvm_4.0.4.LTS
-RUN \
-    curl -O https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-ayxs93eZNN/4.0.4.LTS/ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin \
-    && chmod +x ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin \
-    && ./ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin --help \
-    && ./ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin --mode unattended --prefix /opt \
-    && rm ti_cgt_armllvm_4.0.4.LTS_linux-x64_installer.bin
+# Install https://www.ti.com/tool/download/ARM-CGT-CLANG to /opt/ti-cgt-armllvm_5.1.1.LTS
+RUN set -e \
+    && curl -fsSL https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-ayxs93eZNN/5.1.1.LTS/ti_cgt_armllvm_5.1.1.LTS_linux-x64_installer.bin -o ti_cgt_armllvm.bin \
+    && chmod +x ti_cgt_armllvm.bin \
+    && ./ti_cgt_armllvm.bin --help \
+    && ./ti_cgt_armllvm.bin --mode unattended --prefix /opt \
+    && rm ti_cgt_armllvm.bin
 
 # Install https://www.ti.com/tool/download/CCSTUDIO to /opt/ccs
-# TODO: can't get rid of blackhawk, fails to install
+# TODO: can't get rid of blackhawk
 # https://sir.ext.ti.com/jira/browse/EXT_EP-12145
-# RUN \
-#     curl -O https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/20.3.1/CCS_20.3.1.00005_linux.zip \
-#     && unzip -q -d /opt CCS_20.3.1.00005_linux.zip \
-#     && rm CCS_20.3.1.00005_linux.zip \
-#     && cd /opt/CCS_20.3.1.00005_linux \
-#     && chmod +x ccs_setup_20.3.1.00005.run \
-#     && ./ccs_setup_20.3.1.00005.run --help \
-#     && ./ccs_setup_20.3.1.00005.run --mode unattended --prefix /opt --enable-components PF_WCONN \
-#     # && chown root theia/chrome-sandbox \ # Ubuntu 24
-#     # && chmod 4755 theia/chrome-sandbox \ # Ubuntu 24
-#     && cd .. \
-#     && rm -rf /opt/CCS_20.3.1.00005_linux
-
-# Install https://www.ti.com/tool/download/CCSTUDIO to /opt/ccs
-RUN \
-    curl -O https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/12.8.1/CCS12.8.1.00005_linux-x64.tar.gz \
-    && tar -C /opt -xf CCS12.8.1.00005_linux-x64.tar.gz \
-    && rm CCS12.8.1.00005_linux-x64.tar.gz \
-    && cd /opt/CCS12.8.1.00005_linux-x64 \
-    && chmod +x ccs_setup_12.8.1.00005.run \
-    && ./ccs_setup_12.8.1.00005.run --help \
-    && ./ccs_setup_12.8.1.00005.run --mode unattended --prefix /opt --enable-components PF_WCONN --install-BlackHawk false --install-Segger false \
+RUN set -e \
+    && curl -fsSL https://dr-download.ti.com/software-development/ide-configuration-compiler-or-debugger/MD-J1VdearkvK/21.0.1/CCS_21.0.1.00010_linux.zip -o ccs.zip \
+    && unzip -q -d /opt ccs.zip \
+    && rm ccs.zip \
+    && cd /opt/CCS_21.0.1.00010_linux \
+    && chmod +x ccs_setup_21.0.1.00010.run \
+    && ./ccs_setup_21.0.1.00010.run --help \
+    && ./ccs_setup_21.0.1.00010.run --mode unattended --prefix /opt --enable-components PF_WCONN \
     && cd .. \
-    && rm -rf /opt/CCS12.8.1.00005_linux-x64
+    && rm -rf /opt/CCS_21.0.1.00010_linux
 
 # Install https://github.com/TexasInstruments/ot-ti to /opt/ot-ti
 # bootstrap script installs sysconfig, so install first, we'll use that one for everything
 # IMPORTANT: when updating branch, always check SYSCONFIG_VERSION in ./script/bootstrap to update envs
-RUN \
-    cd /opt \
+RUN set -e \
+    && cd /opt \
     && git clone --depth 1 -b thread-v1.4-ti https://github.com/TexasInstruments/ot-ti \
     && cd /opt/ot-ti \
     && git rm third_party/ti_simplelink_sdk/repo_cc13xx_cc26xx \
@@ -83,48 +64,48 @@ RUN \
     && ./script/bootstrap \
     && cd ..
 
-ENV SYSCONFIG_TOOL="/opt/ti/sysconfig_1.24.1/sysconfig_cli.sh"
+ENV SYSCONFIG_TOOL="/opt/ti/sysconfig_1.27.0/sysconfig_cli.sh"
 
-# Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F2-SDK/ to /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11
-RUN \
-    curl -O https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-BPlR3djvTV/8.31.00.11/simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
-    && chmod +x simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
-    && ./simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run --help \
-    && ./simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run --mode unattended --prefix /opt \
-    && rm simplelink_cc13xx_cc26xx_sdk_8_31_00_11.run \
-    && ln -s -f /opt/simplelink_cc13xx_cc26xx_sdk_8_31_00_11 /opt/simplelink-lowpower-f2-sdk
+# Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F2-SDK/ to /opt/simplelink_cc13xx_cc26xx_sdk_8_33_00_16
+RUN set -e \
+    && curl -fsSL https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-BPlR3djvTV/8.33.00.16/simplelink_cc13xx_cc26xx_sdk_8_33_00_16.run -o f2_sdk.run \
+    && chmod +x f2_sdk.run \
+    && ./f2_sdk.run --help \
+    && ./f2_sdk.run --mode unattended --prefix /opt \
+    && rm f2_sdk.run \
+    && ln -s -f /opt/simplelink_cc13xx_cc26xx_sdk_8_33_00_16 /opt/simplelink-lowpower-f2-sdk
 
 # Install https://github.com/TexasInstruments/simplelink-lowpower-f2-sdk to /opt/simplelink-lowpower-f2-sdk
-# RUN \
-#     cd /opt \
-#     && git clone --depth 1 -b lpf2-8.31.00.11 https://github.com/TexasInstruments/simplelink-lowpower-f2-sdk \
+# RUN set -e \
+#     && cd /opt \
+#     && git clone --depth 1 -b lpf2-8.33.00.16 https://github.com/TexasInstruments/simplelink-lowpower-f2-sdk \
 #     && cd /opt/simplelink-lowpower-f2-sdk \
 #     && sed -i -e "s+XDC_INSTALL_DIR.*+XDC_INSTALL_DIR=/opt/ti/xdctools_3_62_01_15_core+g" ./imports.mak \
-#     && sed -i -e "s+SYSCONFIG_TOOL.*+SYSCONFIG_TOOL=/opt/ti/sysconfig_1.24.1/sysconfig_cli.sh+g" ./imports.mak \
+#     && sed -i -e "s+SYSCONFIG_TOOL.*+SYSCONFIG_TOOL=/opt/ti/sysconfig_1.27.0/sysconfig_cli.sh+g" ./imports.mak \
 #     && sed -i -e "s+CMAKE.*+CMAKE=cmake+g" ./imports.mak \
-#     && sed -i -e "s+TICLANG_ARMCOMPILER.*+TICLANG_ARMCOMPILER=/opt/ti-cgt-armllvm_4.0.4.LTS+g" ./imports.mak \
+#     && sed -i -e "s+TICLANG_ARMCOMPILER.*+TICLANG_ARMCOMPILER=/opt/ti-cgt-armllvm_5.1.1.LTS+g" ./imports.mak \
 #     && sed -i -e "s+GCC_ARMCOMPILER.*++g" ./imports.mak \
 #     && sed -i -e "s+IAR_ARMCOMPILER.*++g" ./imports.mak \
 #     && make \
 #     && cd ..
 
-# # Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F3-SDK to /opt/simplelink_lowpower_f3_sdk_9_12_00_19
-# RUN \
-#     curl -O https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-emMPuXshOG/9.12.00.19/simplelink_lowpower_f3_sdk_9_12_00_19.run \
-#     && chmod +x simplelink_lowpower_f3_sdk_9_12_00_19.run \
-#     && ./simplelink_lowpower_f3_sdk_9_12_00_19.run --help \
-#     && ./simplelink_lowpower_f3_sdk_9_12_00_19.run --mode unattended --prefix /opt \
-#     && rm simplelink_lowpower_f3_sdk_9_12_00_19.run \
-#     && ln -s -f /opt/simplelink_lowpower_f3_sdk_9_12_00_19 /opt/simplelink-lowpower-f3-sdk
+# # Install https://www.ti.com/tool/download/SIMPLELINK-LOWPOWER-F3-SDK to /opt/simplelink_lowpower_f3_sdk_9_23_00_27
+# RUN set -e \
+#     && curl -fsSL https://dr-download.ti.com/software-development/software-development-kit-sdk/MD-emMPuXshOG/9.23.00.27/simplelink_lowpower_f3_sdk_9_23_00_27.run -o f3_sdk.run \
+#     && chmod +x f3_sdk.run \
+#     && ./f3_sdk.run --help \
+#     && ./f3_sdk.run --mode unattended --prefix /opt \
+#     && rm f3_sdk.run \
+#     && ln -s -f /opt/simplelink_lowpower_f3_sdk_9_23_00_27 /opt/simplelink-lowpower-f3-sdk
 
 # Install https://github.com/TexasInstruments/simplelink-lowpower-f3-sdk to /opt/simplelink-lowpower-f3-sdk
-RUN \
-    cd /opt \
-    && git clone --depth 1 -b lpf3-9.20.00.07_ea https://github.com/TexasInstruments/simplelink-lowpower-f3-sdk \
+RUN set -e \
+    && cd /opt \
+    && git clone --depth 1 -b lpf3-9.23.00.27 https://github.com/TexasInstruments/simplelink-lowpower-f3-sdk \
     && cd /opt/simplelink-lowpower-f3-sdk \
-    && sed -i -e "s+SYSCONFIG_TOOL.*+SYSCONFIG_TOOL=/opt/ti/sysconfig_1.24.1/sysconfig_cli.sh+g" ./imports.mak \
+    && sed -i -e "s+SYSCONFIG_TOOL.*+SYSCONFIG_TOOL=/opt/ti/sysconfig_1.27.0/sysconfig_cli.sh+g" ./imports.mak \
     && sed -i -e "s+CMAKE.*+CMAKE=cmake+g" ./imports.mak \
-    && sed -i -e "s+TICLANG_ARMCOMPILER.*+TICLANG_ARMCOMPILER=/opt/ti-cgt-armllvm_4.0.4.LTS+g" ./imports.mak \
+    && sed -i -e "s+TICLANG_ARMCOMPILER.*+TICLANG_ARMCOMPILER=/opt/ti-cgt-armllvm_5.1.1.LTS+g" ./imports.mak \
     && sed -i -e "s+GCC_ARMCOMPILER.*++g" ./imports.mak \
     && sed -i -e "s+IAR_ARMCOMPILER.*++g" ./imports.mak \
     && make \

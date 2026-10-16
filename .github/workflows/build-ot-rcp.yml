@@ -16,11 +16,12 @@ on:
       - published
 
 env:
-  SYSCFG_ROOT: /opt/ti/sysconfig_1.24.1
+  SYSCFG_ROOT: /opt/ti/sysconfig_1.27.0
   OT_SDK_PATH: /opt/ot-ti
   F2_SDK_PATH: /opt/simplelink-lowpower-f2-sdk
   F3_SDK_PATH: /opt/simplelink-lowpower-f3-sdk
-  TICLANG_PATH: /opt/ti-cgt-armllvm_4.0.4.LTS
+  TICLANG_PATH: /opt/ti-cgt-armllvm_5.1.1.LTS
+  OT_PACKAGE_VERSION: 1.4.0.0
 
 jobs:
   build_container:
@@ -68,7 +69,7 @@ jobs:
           echo "Setting build date"
           now=$(date +"%Y%m%d")
 
-          sed -i -e "s+OT_PACKAGE_VERSION \"1.4.0.0\"+OT_PACKAGE_VERSION \"1.4.0.0-$now\"+g" ${{ env.OT_SDK_PATH }}/CMakeLists.txt
+          sed -i -e "s+OT_PACKAGE_VERSION \"${{ env.OT_PACKAGE_VERSION }}\"+OT_PACKAGE_VERSION \"${{ env.OT_PACKAGE_VERSION }}-$now\"+g" ${{ env.OT_SDK_PATH }}/CMakeLists.txt
 
       - name: Patch syscfg
         run: |

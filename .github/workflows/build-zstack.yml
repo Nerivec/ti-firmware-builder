@@ -23,10 +23,10 @@ env:
   CCS_IMPORT: -application com.ti.ccstudio.apps.importProject
   CCS_MODIFY: -application com.ti.ccstudio.apps.modifyProject
   CCS_BUILD: -application com.ti.ccstudio.apps.buildProject
-  SYSCFG_CLI: /opt/ti/sysconfig_1.24.1/sysconfig_cli.sh
+  SYSCFG_CLI: /opt/ti/sysconfig_1.27.0/sysconfig_cli.sh
   SDK_PATH: /opt/simplelink-lowpower-f2-sdk
   # ZSTACK_EXAMPLES_PATH: /opt/simplelink-zstack-examples
-  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_4.0.4.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink-lowpower-f2-sdk/source/preinclude.h -ccs.linkFile /opt/simplelink-lowpower-f2-sdk/source/ti/zstack/stack/nwk/nwk_util.c
+  PROJECT_DEFAULTS: -ccs.endianness little -ccs.toolChain TICLANG -ccs.toolVersion TICLANG_5.1.1.LTS -ccs.outputType executable -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;" -ccs.linkFile /opt/simplelink-lowpower-f2-sdk/source/preinclude.h -ccs.linkFile /opt/simplelink-lowpower-f2-sdk/source/ti/zstack/stack/nwk/nwk_util.c
   # -ccs.enableHexTool true -ccs.setHexOptions "--output-target ihex"
   # -ccs.setPostBuildStep "${CG_TOOL_ROOT}/bin/tiarmobjcopy ${BuildArtifactFileName} --output-target ihex ${BuildArtifactFileBaseName}.hex;"
   # -ccs.outputFormat ELF
@@ -60,8 +60,8 @@ jobs:
       # Example output:
       # - /opt/css
       # - /opt/simplelink-lowpower-f2-sdk
-      # - /opt/ti/sysconfig_1.24.1
-      # - /opt/ti-cgt-armllvm_4.0.4.LTS
+      # - /opt/ti/sysconfig_1.27.0
+      # - /opt/ti-cgt-armllvm_5.1.1.LTS
       # - /opt/xdctools_3_62_01_15_core
       # - /opt/xdctools_3_62_01_16_core
       - run: tree -d /opt
