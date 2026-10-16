@@ -27,7 +27,7 @@ jobs:
       image: ${{ needs.build_container.outputs.container_name }}
       options: --user root
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
 
       # Fix `fatal: detected dubious ownership in repository at`
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -35,7 +35,7 @@ jobs:
       - run: tree -d ${{ env.F2_SDK_PATH }}/examples/
       # - run: tree -d ${{ env.F3_SDK_PATH }}/examples/
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sdk_examples
           path: |

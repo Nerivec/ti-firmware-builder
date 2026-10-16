@@ -52,7 +52,7 @@ jobs:
       image: ${{ needs.build_container.outputs.container_name }}
       options: --user root
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
 
       # Fix `fatal: detected dubious ownership in repository at`
       - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -236,7 +236,7 @@ jobs:
       # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_1
       # - ${{ env.SDK_PATH }}/examples/rtos/LP_EM_CC1354P10_6
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ inputs.debug }}
         with:
           name: pre_build_dir
@@ -260,7 +260,7 @@ jobs:
       - name: Build workspace projects
         run: ${{ env.CCS_CMD }} ${{ env.CCS_BUILD }} -ccs.workspace -ccs.buildType full -ccs.listErrors
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ inputs.debug }}
         with:
           name: build_dir
@@ -276,7 +276,7 @@ jobs:
             ${{ env.SDK_PATH }}/workspace/.metadata/.log
           include-hidden-files: true
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: firmware_builds
           path: ${{ env.SDK_PATH }}/workspace/**/*.hex
@@ -290,12 +290,12 @@ jobs:
       contents: write
     steps:
       - name: Download firmware builds artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: firmware_builds
           path: artifacts
 
       - name: Upload artifacts
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: artifacts/**/*.hex
